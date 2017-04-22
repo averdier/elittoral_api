@@ -1,4 +1,4 @@
-from flask import jsonify, request
+from flask import request
 from flask_restplus import abort
 from app.exceptions import ValueExist
 from flask_restplus import Resource
@@ -13,7 +13,7 @@ ns = api.namespace('waypoints', description='Operations related to waypoints.')
 @ns.route('/')
 class WaypointCollection(Resource):
     @api.marshal_with(waypoint_data_container)
-    def get(self) -> object:
+    def get(self):
         """
         Retourne la liste des wayoints
         <!> A revoir pour integrer &flightplan_id = 
@@ -40,6 +40,7 @@ class WaypointCollection(Resource):
         """
         try:
             wp = Waypoint.from_dict(request.json)
+            wp.flightplan.delete_builder_options()
             db.session.add(wp)
             db.session.commit()
 
@@ -55,7 +56,7 @@ class WaypointCollection(Resource):
 @api.response(404, 'Waypoint not found.')
 class WaypointItem(Resource):
     @api.marshal_with(waypoint)
-    def get(self, id: object) -> object:
+    def get(self, id):
         """
         Retourne un wayoint
 

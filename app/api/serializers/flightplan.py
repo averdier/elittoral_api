@@ -29,3 +29,7 @@ flightplan_no_builder = api.model('FlightPlan', {
 flightplan_with_builder = api.inherit('FlightPlanWithBuilder', flightplan_no_builder, {
     'builder_options' : fields.Nested(vertical_builder_options, description='Builder options if builded', default=None)
 })
+
+flightplan_data_wrapper = api.model('FlightPlanDataWrapper', {
+    'flightplans': fields.List(fields.Nested(flightplan_with_builder))
+})

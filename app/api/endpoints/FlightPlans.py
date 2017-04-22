@@ -3,7 +3,7 @@ from flask_restplus import abort, marshal
 from app.exceptions import ValueExist
 from flask_restplus import Resource
 from app.api.business import build_vertical_flightplan
-from app.api.serializers.flightplan import flightplan_no_builder, flightplan_with_builder, post_flightplan, put_flightplan
+from app.api.serializers.flightplan import flightplan_no_builder, flightplan_with_builder, post_flightplan, put_flightplan, flightplan_data_wrapper
 from app.api.serializers.builder import post_vertical_builder, builder_output
 from app.api import api
 from app.extensions import db
@@ -15,12 +15,10 @@ ns = api.namespace('flightplans', description='Operations related to flightplans
 @ns.route('/')
 class FlightPlanCollection(Resource):
 
+    @api.response(200, 'Success', flightplan_data_wrapper)
     def get(self) -> object:
         """
         Retourne la liste des plans de vol
-
-        200
-        :return: 
         """
 
         result = []
@@ -135,14 +133,18 @@ class FlightBuilder(Resource):
         Retourne un plan de vol vertical
         :return: 
         """
-        builder_result = build_vertical_flightplan(request.json)
-        builder = FlightPlanBuilder.from_dict(request.json)
+        try:
 
-        fp = FlightPlan(name=builder_result['name'], waypoints = builder_result['waypoints'], builder_options= builder)
-        fp.update_informations()
+            builder_result = build_vertical_flightplan(request.json)
+            builder = FlightPlanBuilder.from_dict(request.json)
 
-        if request.json.get('save'):
-            db.session.add(fp)
-            db.session.commit()
+            fp = FlightPlan(name=builder_result['name'], waypoints = builder_result['waypoints'], builder_options= builder)
+            fp.update_informations()
 
-        return fp
+            if request.json.get('save'):
+                db.session.add(fp)
+                db.session.commit()
+
+            return fp
+        except Exception as e:
+            abort(400, error=str(e))

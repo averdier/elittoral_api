@@ -536,7 +536,7 @@ class FlightPlan(db.Model):
         :type args: dict
             {
                 'name'         : value, (required|string|unique|min_size[3]|max_size[64])
-                'created_on' : value  (optional|string|valid_date_format[Y-m-d H:M:S])
+                'created_on' : value  (optional|string|valid_date_format)
             }
         :return: Plan de vol
         :rtype: FlightPlan
@@ -552,9 +552,7 @@ class FlightPlan(db.Model):
 
         created_on = args.get('created_on')
         if created_on is not None:
-            if not is_valid_date(created_on, '%Y-%m-%d %H:%M:%S'):
-                raise ValueError('Invalid FlightPlan created_on date format')
-            flightplan.created_on = datetime.strptime(created_on, '%Y-%m-%d %H:%M:%S')
+            flightplan.created_on = created_on
 
         return flightplan
 
@@ -615,7 +613,7 @@ class FlightPlan(db.Model):
         """
         distance = 0.0
         for i in range(1, self.waypoints.count()):
-            distance += self.waypoints[i].parameters.coord.pythagore_distance_to(self.waypoints[i-1].parameters.coord)
+            distance += self.waypoints[i].parameters.coord.pythagore_distance_to(self.waypoints[i - 1].parameters.coord)
         self.distance = distance
 
     def __set_waypoints(self, w_array):
@@ -653,8 +651,7 @@ class FlightPlan(db.Model):
             for waypoint in self.waypoints.all():
                 waypoint.deep_delete()
 
-            if self.builder_options is not None:
-                db.session.delete(self.builder_options)
+            self.delete_builder_options()
             db.session.commit()
 
         for waypoint in w_array:
@@ -689,6 +686,13 @@ class FlightPlan(db.Model):
             raise ValueError('FlightPlan name already exist')
         self.name = name
 
+    def delete_builder_options(self):
+        """
+        Supprime les options du generateur de plan de vol, utile si le plan de vol est modifie
+        """
+        if self.builder_options is not None:
+            db.session.delete(self.builder_options)
+
     def deep_delete(self):
         """
         Supprime completement un flightplan, waypoint et reconnaissances liees
@@ -696,6 +700,8 @@ class FlightPlan(db.Model):
         for waypoint in self.waypoints.all():
             waypoint.deep_delete()
 
+        for recon in self.recons.all():
+            recon.deep_delete()
         db.session.delete(self)
 
 
@@ -754,6 +760,7 @@ class Waypoint(db.Model):
         flightplan = FlightPlan.get_from_id(args.get('flightplan_id'))
         if flightplan is None:
             raise ValueError('FlightPlan #' + args.get('flightplan_id') + ' not found')
+
         waypoint.flightplan_id = flightplan.id
         waypoint.flightplan = flightplan
 
@@ -808,6 +815,10 @@ class Waypoint(db.Model):
 
         if params is not None:
             self.set_parameters(params)
+
+        if self.flightplan is not None:
+            self.flightplan.delete_builder_options()
+
         db.session.add(self)
 
     def set_number(self, number):
@@ -942,7 +953,7 @@ class FlightPlanBuilder(db.Model):
         alt_start = args.get('alt_start')
         if alt_start is not None:
             builder.set_alt_start(alt_start)
-        
+
         builder.set_alt_end(args.get('alt_end'))
         builder.set_h_increment(args.get('h_increment'))
         builder.set_v_increment(args.get('v_increment'))
@@ -988,7 +999,7 @@ class FlightPlanBuilder(db.Model):
         if alt_end <= 0:
             raise ValueError('Parameter alt_end have to be upper 0')
         self.alt_end = alt_end
-        
+
     def set_h_increment(self, h_increment):
         """
         Definie l'increment horizontal
@@ -1003,7 +1014,7 @@ class FlightPlanBuilder(db.Model):
         if h_increment <= 0:
             raise ValueError('Parameter h_increment have to be upper 0')
         self.h_increment = h_increment
-        
+
     def set_v_increment(self, v_increment):
         """
         Definie l'increment vertical
@@ -1018,7 +1029,7 @@ class FlightPlanBuilder(db.Model):
         if v_increment <= 0:
             raise ValueError('Parameter v_increment have to be upper 0')
         self.v_increment = v_increment
-        
+
     def set_d_rotation(self, d_rotation):
         """
         Definie la rotation du drone
@@ -1093,3 +1104,269 @@ class FlightPlanBuilder(db.Model):
             self.coord2.update_from_dict(args)
         else:
             self.coord2 = GPSCoord.from_dict(args)
+
+
+class Recon(db.Model):
+    """
+    Classe representant une reconnaissance
+    """
+    __tablename__ = 'recon'
+    id = db.Column(db.Integer, primary_key=True)
+    created_on = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_on = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    flightplan_id = db.Column(db.Integer, db.ForeignKey('flightplan.id'))
+    flightplan = db.relationship('FlightPlan', backref=db.backref('recons', lazy='dynamic'))
+
+    @staticmethod
+    def get_from_id(recon_id):
+        """
+        Retourne une reconnaissance a partir de sont identifiant
+
+        :param recon_id: Identifiant unique de la reconnaissance
+        :type recon_id: int|string
+
+        :return: Reconnaissance
+        :rtype: Recon
+
+        :raise ValueError: Si id == None ou id <= 0
+        :raise TypeError: Si id n'est pas un int et ne peux pas etre converti en int
+        """
+        if recon_id is None:
+            raise ValueError('Parameter recon_id is required')
+        recon_id = int(recon_id)
+
+        if recon_id <= 0:
+            raise ValueError('Parameter recon_id have to be upper 0')
+
+        return Recon.query.filter_by(id=recon_id).first()
+
+    @staticmethod
+    def from_dict(args):
+        """
+        Retourne une reconnaissance a partir d'un dictionnaire
+
+        :param args: Dictionnaire representant la reconnaissance
+        :type args: dict
+            {
+                'flightplan_id' : value, (required|int|exist[flightplan.id])
+                'created_on'  : value  (optional|string|valid_date_format
+            }
+        :return: Reconnaissance
+        :rtype: Recon
+
+        :raise ValueError: Si dict == None ou si erreur de validation du contenu
+        :raise TypeError: Si erreur de validation du contenu
+        """
+        if args is None:
+            raise ValueError('args required')
+
+        recon = Recon()
+
+        flightplan = FlightPlan.get_from_id(args.get('flightplan_id'))
+        if flightplan is None:
+            raise ValueError('FlightPlan #' + str(args.get('flightplan_id')) + ' not found')
+        recon.flightplan_id = flightplan.id
+        recon.flightplan = flightplan
+
+        created_on = args.get('created_on')
+        if created_on is not None:
+            recon.created_on = created_on
+
+        return recon
+
+    def deep_delete(self):
+        """
+        Supprime completement une reconnaissance et les ressources liees
+        """
+        for resource in self.resources.all():
+            resource.deep_delete()
+        db.session.delete(self)
+
+
+class Resource(db.Model):
+    """
+    Classe representant une ressource d'un reconnaissance
+    """
+    __tablename__ = 'resource'
+    id = db.Column(db.Integer, primary_key=True)
+    created_on = db.Column(db.DateTime, default=datetime.utcnow)
+    recon_id = db.Column(db.Integer, db.ForeignKey('recon.id'))
+    recon = db.relationship('Recon', backref=db.backref('resources', lazy='dynamic'))
+    number = db.Column(db.Integer)
+    filename = db.Column(db.String(64), unique=True)
+    params_id = db.Column(db.Integer, db.ForeignKey('drone_params.id'))
+    params = db.relationship('DroneParameters', backref='resource')
+
+    @staticmethod
+    def from_dict(args):
+        """
+        Retourne une ressource a partir d'un dictionnaire
+
+        :param args: Dictionnaire representant la ressource
+        :type  args:
+            {
+                'recon_id'      : value, (required|int|exist[flightplan.id])
+                'created_on'' : value, (optional|string|valid_date_format)
+                'number'        : value, (required|int|min[0]|max[99]|not_exist)
+                'params'        : {      (required) 
+                    'rotation' : value,     (optional|int|min[-180]|max[180]|default[0])
+                    'coord' :               (required)
+                        {
+                            'lat' : value,      (required|float|min[-90]|max[90])
+                            'lon' : value,      (required|float|min[-180]|max[180])
+                            'alt' : value       (optionnal|float|default[1])
+                        }
+                    'gimbal' :              (optional, else need minimum 1 value)
+                        {
+                            'yaw'   : value, (optionnal|float|min[-180]|max[180]|default[0])
+                            'pitch' : value, (optionnal|float|min[-180]|max[180]|default[90])
+                            'roll'  : value  (optionnal|float|min[-180]|max[180]|default[0])
+                        }
+                }
+            }
+        :return: Ressource
+        :rtype: Resource
+
+        :raise ValueError: Si dict == None ou si erreur de validation du contenu
+        :raise TypeError: Si erreur de validation du contenu
+        """
+        if args is None:
+            raise ValueError('args required')
+
+        resource = Resource()
+
+        recon = Recon.get_from_id(args.get('recon_id'))
+        if recon is None:
+            raise ValueError('Recon #' + str(args.get('recon_id')) + ' not found')
+        resource.recon_id = recon.id
+        resource.recon = recon
+
+        resource.__set_number(args.get('number'))
+        resource.__set_params(args.get('params'))
+
+        created_on = args.get('created_on')
+        if created_on is not None:
+            resource.created_on = created_on
+
+        return resource
+
+    def get_content_path(self):
+        """
+        Retourne le path du fichier de la resource
+
+        :raise ValueError: Si la ressource ne contient pas de fichier
+        :return: Chemin du fichier de la ressource
+        :rtype: str
+        """
+        if self.filename is None:
+            raise ValueError('Resource have no content')
+        path = os.path.join(UPLOAD_FOLDER, self.filename)
+        return path
+
+    def set_content(self, file):
+        """
+        Definie le fichier de la ressource
+
+        :param file: Fichier
+        :type file: file
+
+        :raise ValueError: Si file == None ou si erreur de validation du contenu
+        :raise ValueExist: Si la ressource contient deja un fichier
+        """
+        if file is None:
+            raise ValueError('Parameter file is required')
+
+        if self.filename is not None:
+            raise ValueExist('Resource content already exist')
+
+        if file.filename == '':
+            raise ValueError('Parameter file is required')
+
+        if not allowed_file(file.filename):
+            raise ValueError('File type not allowed')
+
+        ext = get_extention(file.filename)
+        filename = 'FP' + str(self.recon.flightplan_id) + '_R' + str(self.recon_id) + '_S' + str(
+            self.number) + '.' + ext
+        path = os.path.join(UPLOAD_FOLDER, filename)
+
+        # Normalement ne doit pas arriver, met a jour la ressource si un fichier est trouve
+        if os.path.exists(path):
+            self.filename = filename
+            db.session.add(self)
+            db.session.commit()
+            raise ValueExist('Resource content already exist')
+        else:
+            file.save(os.path.join(UPLOAD_FOLDER, filename))
+            self.filename = filename
+            db.session.add(self)
+            db.session.commit()
+
+    def remove_content(self):
+        """
+        Supprime le fichier de la ressource
+        """
+        if self.filename is not None:
+            path = os.path.join(UPLOAD_FOLDER, self.filename)
+            if os.path.exists(path):
+                os.remove(path)
+            self.filename = None
+            db.session.add(self)
+
+    def __set_number(self, number):
+        """
+        Modifier le numero de la resource
+
+        :param number: Numero de la resource
+        :type number: int|str
+
+        :raise ValueError: Si number == None ou number < 0 ou number > 99
+        :raise TypeError: Si number n'est pas un int et qu'il ne peux pas etre converti en int
+        :raise ValueExist: Si une resource portant ce numero existe deja
+        """
+        if number is None:
+            raise ValueError('Parameter number is required')
+        number = int(number)
+
+        if number < 0 or number > 99:
+            raise ValueError('Parameter number have to be between 0 and 99')
+
+        if Resource.query.filter_by(recon_id=self.recon_id, number=number).first() is not None:
+            raise ValueExist('Resource #' + str(number) + ' already exist')
+        self.number = number
+
+    def __set_params(self, args):
+        """
+        Definie les parametres du drone au moment de la prise
+
+        :param args: Dictionnaire representant les parametres du drone au moment de la prise
+        :type args: dict
+            {
+                'rotation' : value, (optional|int|min[-180]|max[180]|default[0])
+                'coord' :           (required)
+                    {
+                        'lat' : value, (required|float|min[-90]|max[90])
+                        'lon' : value, (required|float|min[-180]|max[180])
+                        'alt' : value  (optionnal|float|default[1])
+                    }
+                'gimbal' :          (optional, else need minimum 1 value)
+                    {
+                        'yaw'   : value, (optionnal|float|min[-180]|max[180]|default[0])
+                        'pitch' : value, (optionnal|float|min[-180]|max[180]|default[90])
+                        'roll'  : value  (optionnal|float|min[-180]|max[180]|default[0])
+                    }
+            }
+        :raise ValueError: Si dict == None ou si erreur de validation du contenu
+        :raise TypeError: Si erreur de validation du contenu
+        """
+        if self.params is not None:
+            self.params.update_from_dict(args)
+        else:
+            self.params = DroneParameters.from_dict(args)
+
+    def deep_delete(self):
+        """
+        Supprime completement une ressource et le fichier liee
+        """
+        self.remove_content()
+        db.session.delete(self)
