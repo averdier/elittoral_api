@@ -498,6 +498,7 @@ class FlightPlan(db.Model):
     created_on = db.Column(db.DateTime, default=datetime.utcnow)
     updated_on = db.Column(db.DateTime, onupdate=datetime.utcnow)
     name = db.Column(db.String(64), unique=True)
+    distance = db.Column(db.Float, default=0.0)
     builder_options_id = db.Column(db.Integer, db.ForeignKey('builder_options.id'))
     builder_options = db.relationship('FlightPlanBuilder')
 
@@ -608,6 +609,15 @@ class FlightPlan(db.Model):
 
         db.session.add(self)
 
+    def update_informations(self):
+        """
+        Met a jour les informations du plan de vol tel que la distance
+        """
+        distance = 0.0
+        for i in range(1, self.waypoints.count()):
+            distance += self.waypoints[i].parameters.coord.pythagore_distance_to(self.waypoints[i-1].parameters.coord)
+        self.distance = distance
+
     def __set_waypoints(self, w_array):
         """
         Definie les waypoints du plan de vol
@@ -652,6 +662,8 @@ class FlightPlan(db.Model):
             w = Waypoint.from_dict(waypoint)
 
             db.session.add(w)
+
+        self.update_informations()
 
     def __set_name(self, name):
         """

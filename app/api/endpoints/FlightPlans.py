@@ -139,6 +139,7 @@ class FlightBuilder(Resource):
         builder = FlightPlanBuilder.from_dict(request.json)
 
         fp = FlightPlan(name=builder_result['name'], waypoints = builder_result['waypoints'], builder_options= builder)
+        fp.update_informations()
 
         if request.json.get('save'):
             db.session.add(fp)

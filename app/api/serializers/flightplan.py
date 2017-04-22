@@ -21,6 +21,7 @@ flightplan_no_builder = api.model('FlightPlan', {
     'id' : fields.Integer(required = True, description="FlightPlan unique ID"),
     'created_on' : fields.DateTime(dt_format='iso8601', required = False, description = 'Datetime of waypoint creation'),
     'name' : fields.String(required = True, description = 'Flightplan name', min_length = 3, max_length = 64),
+    'distance' : fields.Float(required = False, description = 'FlightPlan distance (km)'),
     'waypoints' : fields.List(fields.Nested(waypoint_in_flightplan), description = 'Waypoint list of Flighplan'),
     'waypoints_count' : fields.Integer(attribute=lambda x: x.waypoints.count()),
 })
