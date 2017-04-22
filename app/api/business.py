@@ -106,7 +106,7 @@ def build_vertical_flightplan(parameters):
                     'lat' : value, (required|float|min[-90]|max[90])
                     'lon' : value (required|float|min[-180]|max[180])
                 },
-            'alt_start'      : value, (roptional|float|min[>0|default[1])
+            'alt_start'      : value, (optional|float|min[>0|default[1])
             'alt_end'        : value, (required|float|min[>alt_start])
             'h_increment'    : value, (required|float|min[>0)
             'v_increment'    : value, (required|float|min[>0)

@@ -498,6 +498,8 @@ class FlightPlan(db.Model):
     created_on = db.Column(db.DateTime, default=datetime.utcnow)
     updated_on = db.Column(db.DateTime, onupdate=datetime.utcnow)
     name = db.Column(db.String(64), unique=True)
+    builder_options_id = db.Column(db.Integer, db.ForeignKey('builder_options.id'))
+    builder_options = db.relationship('FlightPlanBuilder')
 
     @staticmethod
     def get_from_id(flightplan_id):
@@ -640,6 +642,9 @@ class FlightPlan(db.Model):
         if self.waypoints.count() > 0:
             for waypoint in self.waypoints.all():
                 waypoint.deep_delete()
+
+            if self.builder_options is not None:
+                db.session.delete(self.builder_options)
             db.session.commit()
 
         for waypoint in w_array:
@@ -859,3 +864,220 @@ class Waypoint(db.Model):
         """
         db.session.delete(self.parameters)
         db.session.delete(self)
+
+
+class FlightPlanBuilder(db.Model):
+    """
+    Classe representant un generateur de plan de vol
+    """
+    __tablename__ = 'builder_options'
+    id = db.Column(db.Integer, primary_key=True)
+    type = db.Column(db.String(32))
+    coord1_id = db.Column(db.Integer, db.ForeignKey('gps_coord.id'))
+    coord2_id = db.Column(db.Integer, db.ForeignKey('gps_coord.id'))
+    alt_start = db.Column(db.Float, default=1.0)
+    alt_end = db.Column(db.Float)
+    h_increment = db.Column(db.Float)
+    v_increment = db.Column(db.Float)
+    d_rotation = db.Column(db.Float, default=1.0)
+    d_gimbal_id = db.Column(db.Integer, db.ForeignKey('gimbal.id'))
+    coord1 = db.relationship('GPSCoord', foreign_keys=coord1_id)
+    coord2 = db.relationship('GPSCoord', foreign_keys=coord2_id)
+    d_gimbal = db.relationship('Gimbal')
+
+    @staticmethod
+    def from_dict(args):
+        """
+        Retourne un objet FlightPlanBuilder representant les options du generateur de plan de vol
+        
+        :param args: Dictionnaire representant les parametres
+        :type args: dict
+            {
+                'coord1'          :        (required)
+                    {
+                        'lat' : value, (required|float|min[-90]|max[90])
+                        'lon' : value (required|float|min[-180]|max[180])
+                    },
+                'coord2'          :        (required)
+                    {
+                        'lat' : value, (required|float|min[-90]|max[90])
+                        'lon' : value (required|float|min[-180]|max[180])
+                    },
+                'alt_start'      : value, (optional|float|min[>0|default[1])
+                'alt_end'        : value, (required|float|min[>0])
+                'h_increment'    : value, (required|float|min[>0)
+                'v_increment'    : value, (required|float|min[>0)
+                'r_otation'      : value, (optional|int|min[-180]|max[180]|default[0])
+                'd_gimbal'       :        (optional, else need minimum 1 value)
+                    {
+                        'yaw'   : value, (optionnal|float|min[-180]|max[180]|default[0])
+                        'pitch' : value, (optionnal|float|min[-180]|max[180]|default[90])
+                        'roll'  : value  (optionnal|float|min[-180]|max[180]|default[0])
+                    }
+            }
+        
+        :return: Options du generateur
+        :rtype: FlightPlanBuilder
+        """
+
+        if args is None:
+            raise ValueError('FlightPlanBuilder args required')
+
+        builder = FlightPlanBuilder()
+        builder.set_coord1(args.get('coord1'))
+        builder.set_coord2(args.get('coord2'))
+
+        alt_start = args.get('alt_start')
+        if alt_start is not None:
+            builder.set_alt_start(alt_start)
+        
+        builder.set_alt_end(args.get('alt_end'))
+        builder.set_h_increment(args.get('h_increment'))
+        builder.set_v_increment(args.get('v_increment'))
+
+        d_rotation = args.get('d_rotation')
+        if d_rotation is not None:
+            builder.set_d_rotation(d_rotation)
+
+        d_gimbal = args.get('d_gimbal')
+        if d_gimbal is not None:
+            builder.set_d_gimbal(d_gimbal)
+        else:
+            builder.d_gimbal = Gimbal()
+
+        return builder
+
+    def set_alt_start(self, alt_start):
+        """
+        Definie l'altitude de depart
+        
+        :param alt_start: Altitude de depart
+        :type alt_start: float
+        """
+
+        if alt_start is None:
+            raise ValueError('Parameter alt_start is required')
+        alt_start = float(alt_start)
+        if alt_start <= 0:
+            raise ValueError('Parameter alt_start have to be upper 0')
+        self.alt_start = alt_start
+
+    def set_alt_end(self, alt_end):
+        """
+        Definie l'altitude de d'arrivee
+
+        :param alt_end: Altitude de d'arrivee
+        :type alt_end: float
+        """
+
+        if alt_end is None:
+            raise ValueError('Parameter alt_end is required')
+        alt_end = float(alt_end)
+        if alt_end <= 0:
+            raise ValueError('Parameter alt_end have to be upper 0')
+        self.alt_end = alt_end
+        
+    def set_h_increment(self, h_increment):
+        """
+        Definie l'increment horizontal
+
+        :param h_increment: Increment horizontal 
+        :type h_increment: float
+        """
+
+        if h_increment is None:
+            raise ValueError('Parameter h_increment is required')
+        h_increment = float(h_increment)
+        if h_increment <= 0:
+            raise ValueError('Parameter h_increment have to be upper 0')
+        self.h_increment = h_increment
+        
+    def set_v_increment(self, v_increment):
+        """
+        Definie l'increment vertical
+
+        :param v_increment: Increment vertical 
+        :type v_increment: float
+        """
+
+        if v_increment is None:
+            raise ValueError('Parameter v_increment is required')
+        v_increment = float(v_increment)
+        if v_increment <= 0:
+            raise ValueError('Parameter v_increment have to be upper 0')
+        self.v_increment = v_increment
+        
+    def set_d_rotation(self, d_rotation):
+        """
+        Definie la rotation du drone
+
+        :param d_rotation: Rotation du drone
+        :type d_rotation: float
+        """
+
+        if d_rotation is None:
+            raise ValueError('Parameter d_rotation is required')
+        d_rotation = float(d_rotation)
+        if d_rotation < -180 or d_rotation > 180:
+            raise ValueError('Parameter d_rotation have to be between -180 and 180')
+        self.d_rotation = d_rotation
+
+    def set_d_gimbal(self, args):
+        """
+        Modifie les parametres du gimbal du drone
+
+        :param args: Dictionnaire representant les parametres du gimbal
+        :type args: dict
+            {
+                'yaw'   : value, (optionnal|float|min[-180]|max[180]|default[0])
+                'pitch' : value, (optionnal|float|min[-180]|max[180]|default[90])
+                'roll'  : value  (optionnal|float|min[-180]|max[180]|default[0])
+            }
+
+        :raise ValueError: Si dict == None ou si erreur durant validation du contenu
+        :raise TypeError: Si erreur de validation du contenu
+        """
+        if self.d_gimbal is not None:
+            self.d_gimbal.update_from_dict(args)
+        else:
+            self.d_gimbal = Gimbal.from_dict(args)
+
+    def set_coord1(self, args):
+        """
+        Modifie la coordonnee 1
+
+        :param args: Dictionnaire representant la coordonnee GPS
+        :type  args: dict
+            {
+                'lat' : value, (required|float|min[-90]|max[90])
+                'lon' : value, (required|float|min[-180]|max[180])
+                'alt' : value  (optionnal|float|default[1])
+            }
+
+        :raise ValueError: Si dict == None ou si erreur de validation du contenu
+        :raise TypeError: Si erreur de validation du contenu
+        """
+        if self.coord1 is not None:
+            self.coord1.update_from_dict(args)
+        else:
+            self.coord1 = GPSCoord.from_dict(args)
+
+    def set_coord2(self, args):
+        """
+        Modifie la coordonnee 2
+
+        :param args: Dictionnaire representant la coordonnee GPS
+        :type  args: dict
+            {
+                'lat' : value, (required|float|min[-90]|max[90])
+                'lon' : value, (required|float|min[-180]|max[180])
+                'alt' : value  (optionnal|float|default[1])
+            }
+
+        :raise ValueError: Si dict == None ou si erreur de validation du contenu
+        :raise TypeError: Si erreur de validation du contenu
+        """
+        if self.coord2 is not None:
+            self.coord2.update_from_dict(args)
+        else:
+            self.coord2 = GPSCoord.from_dict(args)

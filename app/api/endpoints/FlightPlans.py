@@ -1,30 +1,40 @@
 from flask import jsonify, request
-from flask_restplus import abort
+from flask_restplus import abort, marshal
 from app.exceptions import ValueExist
 from flask_restplus import Resource
 from app.api.business import build_vertical_flightplan
-from app.api.serializers.flightplan import flightplan, post_flightplan, put_flightplan, flightplan_data_container
+from app.api.serializers.flightplan import flightplan_no_builder, flightplan_with_builder, post_flightplan, put_flightplan
 from app.api.serializers.builder import post_vertical_builder, builder_output
 from app.api import api
 from app.extensions import db
-from app.models import FlightPlan
+from app.models import FlightPlan, FlightPlanBuilder
 
 ns = api.namespace('flightplans', description='Operations related to flightplans.')
 
 
 @ns.route('/')
 class FlightPlanCollection(Resource):
-    @api.marshal_with(flightplan_data_container)
-    def get(self):
+
+    def get(self) -> object:
         """
         Retourne la liste des plans de vol
 
         200
         :return: 
         """
-        return {'flightplans': FlightPlan.query.all()}
 
-    @api.marshal_with(flightplan, code=201, description='FlightPlan successfully created.')
+        result = []
+        flightplans = FlightPlan.query.all()
+
+        for fp in flightplans:
+            if fp.builder_options is None:
+                result.append(marshal(fp, flightplan_no_builder))
+            else:
+                result.append(marshal(fp, flightplan_with_builder))
+
+        return {'flightplans': result}
+
+    @api.marshal_with(flightplan_no_builder, code=201, description='FlightPlan successfully created.')
     @api.doc(responses={
         409: 'Value Exist',
         400: 'Validation Error'
@@ -59,8 +69,8 @@ class FlightPlanCollection(Resource):
 @ns.route('/<int:id>')
 @api.response(404, 'Flightplan not found.')
 class FlightPlanItem(Resource):
-    @api.marshal_with(flightplan)
-    def get(self, id):
+    @api.marshal_with(flightplan_with_builder)
+    def get(self, id: object) -> object:
         """
         Retourne un plan de vol
 
@@ -118,7 +128,7 @@ class FlightPlanItem(Resource):
 
 @ns.route('/build')
 class FlightBuilder(Resource):
-    @api.marshal_with(flightplan)
+    @api.marshal_with(flightplan_with_builder)
     @api.expect(post_vertical_builder)
     def post(self):
         """
@@ -126,8 +136,9 @@ class FlightBuilder(Resource):
         :return: 
         """
         builder_result = build_vertical_flightplan(request.json)
+        builder = FlightPlanBuilder.from_dict(request.json)
 
-        fp = FlightPlan(name=builder_result['name'], waypoints = builder_result['waypoints'])
+        fp = FlightPlan(name=builder_result['name'], waypoints = builder_result['waypoints'], builder_options= builder)
 
         if request.json.get('save'):
             db.session.add(fp)

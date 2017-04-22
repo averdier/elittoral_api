@@ -13,7 +13,7 @@ ns = api.namespace('waypoints', description='Operations related to waypoints.')
 @ns.route('/')
 class WaypointCollection(Resource):
     @api.marshal_with(waypoint_data_container)
-    def get(self):
+    def get(self) -> object:
         """
         Retourne la liste des wayoints
         <!> A revoir pour integrer &flightplan_id = 
@@ -55,7 +55,7 @@ class WaypointCollection(Resource):
 @api.response(404, 'Waypoint not found.')
 class WaypointItem(Resource):
     @api.marshal_with(waypoint)
-    def get(self, id):
+    def get(self, id: object) -> object:
         """
         Retourne un wayoint
 
