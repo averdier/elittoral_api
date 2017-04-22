@@ -12,7 +12,8 @@ post_vertical_builder = api.model('VerticalBuilderParams', {
     'h_increment' : fields.Float(required = True, description = 'Horizontal Increment', min = 0, exclusiveMin=True),
     'v_increment' : fields.Float(required = True, description = 'Vertical Increment', min = 0, exclusiveMin=True),
     'd_rotation' : fields.Float(required = False, description = 'Drone rotation', min=-180, max=180, default=0),
-    'd_gimbal' : fields.Nested(gimbal, required = False, description = 'Drone Gimbal parameters')
+    'd_gimbal' : fields.Nested(gimbal, required = False, description = 'Drone Gimbal parameters'),
+    'save' :fields.Boolean(required=False, description='Auto save the builded FlightPlan', default=False)
 })
 
 

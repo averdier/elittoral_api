@@ -118,12 +118,19 @@ class FlightPlanItem(Resource):
 
 @ns.route('/build')
 class FlightBuilder(Resource):
-    @api.marshal_with(builder_output)
+    @api.marshal_with(flightplan)
     @api.expect(post_vertical_builder)
     def post(self):
         """
         Retourne un plan de vol vertical
         :return: 
         """
-        fp = build_vertical_flightplan(request.json)
+        builder_result = build_vertical_flightplan(request.json)
+
+        fp = FlightPlan(name=builder_result['name'], waypoints = builder_result['waypoints'])
+
+        if request.json.get('save'):
+            db.session.add(fp)
+            db.session.commit()
+
         return fp
