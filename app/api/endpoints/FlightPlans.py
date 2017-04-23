@@ -7,7 +7,7 @@ from app.api.serializers.flightplan import flightplan_no_builder, flightplan_wit
 from app.api.serializers.builder import post_vertical_builder, builder_output
 from app.api import api
 from app.extensions import db
-from app.models import FlightPlan, FlightPlanBuilder
+from app.models import FlightPlan, FlightPlanBuilder, AppInformations
 
 ns = api.namespace('flightplans', description='Operations related to flightplans.')
 
@@ -68,7 +68,7 @@ class FlightPlanCollection(Resource):
 @api.response(404, 'Flightplan not found.')
 class FlightPlanItem(Resource):
     @api.marshal_with(flightplan_with_builder)
-    def get(self, id: object) -> object:
+    def get(self, id):
         """
         Retourne un plan de vol
 
@@ -143,6 +143,7 @@ class FlightBuilder(Resource):
 
             if request.json.get('save'):
                 db.session.add(fp)
+                AppInformations.update()
                 db.session.commit()
 
             return fp

@@ -10,6 +10,29 @@ CONST_LON = 71.5
 CONST_LAT = 111.3
 
 
+class AppInformations(db.Model):
+    """
+    Classe representant les informations du systeme
+    """
+    __tablename__ = 'app_informations'
+    id = db.Column(db.Integer, primary_key=True)
+    updated_on = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @staticmethod
+    def update():
+        """
+        Met a jour la date de derniere mise a jour
+        """
+
+        appinfo = AppInformations.query.first()
+
+        if appinfo is None:
+            appinfo = AppInformations()
+        else:
+            appinfo.update_on = datetime.utcnow()
+        db.session.add(appinfo)
+
+
 class GPSCoord(db.Model):
     """
     Classe representant une coordonnee GPS
