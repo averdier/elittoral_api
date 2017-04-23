@@ -16,5 +16,5 @@ resource = api.inherit('Resource', resource_post, {
 
 
 resource_data_wrapper = api.model('ResourceDataWrapper', {
-    'resources' : fields.List(fields.Nested(resource_post))
+    'resources' : fields.List(fields.Nested(resource))
 })

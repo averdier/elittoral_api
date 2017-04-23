@@ -2,7 +2,7 @@ from flask import request
 from flask_restplus import abort
 from app.exceptions import ValueExist
 from flask_restplus import Resource
-from app.api.serializers.recon import recon_post, recon, recon_data_wrapper
+from app.api.serializers.recon import recon_post, recon, recon_data_wrapper, recon_with_resources
 from app.api import api
 from app.extensions import db
 from app.models import Recon
@@ -51,7 +51,7 @@ class ReconCollection(Resource):
 @ns.route('/<int:id>')
 @api.response(404, 'Recon not found.')
 class ReconItem(Resource):
-    @api.marshal_with(recon)
+    @api.marshal_with(recon_with_resources)
     def get(self, id):
         """
         Retourne une reconnaissance

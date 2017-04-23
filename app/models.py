@@ -370,18 +370,18 @@ class DroneParameters(db.Model):
         if args is None:
             raise ValueError('DroneParameters args required')
 
-        params = DroneParameters()
+        parameters = DroneParameters()
 
         if args.get('rotation') is not None:
-            params.set_rotation(args.get('rotation'))
-        params.set_coord(args.get('coord'))
+            parameters.set_rotation(args.get('rotation'))
+        parameters.set_coord(args.get('coord'))
 
         if args.get('gimbal') is not None:
-            params.set_gimbal(args.get('gimbal'))
+            parameters.set_gimbal(args.get('gimbal'))
         else:
-            params.gimbal = Gimbal()
+            parameters.gimbal = Gimbal()
 
-        return params
+        return parameters
 
     def update_from_dict(self, args):
         """
@@ -569,7 +569,7 @@ class FlightPlan(db.Model):
                         {
                             'date_created'' : value, (optional|string|valid_date_format[Y-m-d H:M:S])
                             'number'        : value, (required|int|min[0]|max[99]|not_exist)
-                            'params'        : {      (required) 
+                            'parameters'    : {      (required) 
                                 'rotation' : value,     (optional|int|min[-180]|max[180]|default[0])
                                 'coord' :               (required)
                                     {
@@ -626,7 +626,7 @@ class FlightPlan(db.Model):
                 {
                     'date_created'' : value, (optional|string|valid_date_format[Y-m-d H:M:S])
                     'number'        : value, (required|int|min[0]|max[99]|not_exist)
-                    'params'        : {      (required) 
+                    'parameters'    : {      (required) 
                         'rotation' : value,     (optional|int|min[-180]|max[180]|default[0])
                         'coord' :               (required)
                             {
@@ -783,7 +783,7 @@ class Waypoint(db.Model):
         :type args: dict
             {
                 'number'        : value, (optional|int|min[0]|max[99]|not_exist)
-                'params'        : {      (optional) 
+                'parameters'    : {      (optional) 
                     'rotation' : value,     (optional|int|min[-180]|max[180]|default[0])
                     'coord' :               (required)
                         {
@@ -805,16 +805,16 @@ class Waypoint(db.Model):
             raise ValueError('Waypoint args required')
 
         number = args.get('number')
-        params = args.get('params')
+        parameters = args.get('parameters')
 
-        if number is None and params is None:
+        if number is None and parameters is None:
             raise ValueError('No data found in Waypoint args')
 
         if number is not None:
             self.set_number(number)
 
-        if params is not None:
-            self.set_parameters(params)
+        if parameters is not None:
+            self.set_parameters(parameters)
 
         if self.flightplan is not None:
             self.flightplan.delete_builder_options()
@@ -1194,8 +1194,8 @@ class Resource(db.Model):
     recon = db.relationship('Recon', backref=db.backref('resources', lazy='dynamic'))
     number = db.Column(db.Integer)
     filename = db.Column(db.String(64), unique=True)
-    params_id = db.Column(db.Integer, db.ForeignKey('drone_params.id'))
-    params = db.relationship('DroneParameters', backref='resource')
+    parameters_id = db.Column(db.Integer, db.ForeignKey('drone_params.id'))
+    parameters = db.relationship('DroneParameters', backref='resource')
 
     @staticmethod
     def from_dict(args):
@@ -1208,7 +1208,7 @@ class Resource(db.Model):
                 'recon_id'      : value, (required|int|exist[flightplan.id])
                 'created_on'' : value, (optional|string|valid_date_format)
                 'number'        : value, (required|int|min[0]|max[99]|not_exist)
-                'params'        : {      (required) 
+                'parameters'    : {      (required) 
                     'rotation' : value,     (optional|int|min[-180]|max[180]|default[0])
                     'coord' :               (required)
                         {
@@ -1242,7 +1242,7 @@ class Resource(db.Model):
         resource.recon = recon
 
         resource.__set_number(args.get('number'))
-        resource.__set_params(args.get('params'))
+        resource.__set_parameters(args.get('parameters'))
 
         created_on = args.get('created_on')
         if created_on is not None:
@@ -1335,7 +1335,7 @@ class Resource(db.Model):
             raise ValueExist('Resource #' + str(number) + ' already exist')
         self.number = number
 
-    def __set_params(self, args):
+    def __set_parameters(self, args):
         """
         Definie les parametres du drone au moment de la prise
 
@@ -1359,10 +1359,10 @@ class Resource(db.Model):
         :raise ValueError: Si dict == None ou si erreur de validation du contenu
         :raise TypeError: Si erreur de validation du contenu
         """
-        if self.params is not None:
-            self.params.update_from_dict(args)
+        if self.parameters is not None:
+            self.parameters.update_from_dict(args)
         else:
-            self.params = DroneParameters.from_dict(args)
+            self.parameters = DroneParameters.from_dict(args)
 
     def deep_delete(self):
         """

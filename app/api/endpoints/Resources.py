@@ -126,7 +126,7 @@ class ContentResourceItem(Resource):
         if not os.path.exists(path) or not os.path.isfile(path):
             abort(400, error='Resource have no content')
 
-        return send_from_directory(UPLOAD_FOLDER, resource.filename)
+        return send_from_directory(UPLOAD_FOLDER, res.filename)
 
     @api.response(204, 'Resource content successfully deleted.')
     def delete(self, id):
