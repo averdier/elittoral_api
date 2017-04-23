@@ -5,7 +5,7 @@ from flask_restplus import Resource
 from app.api.serializers.recon import recon_post, recon, recon_data_wrapper, recon_with_resources
 from app.api import api
 from app.extensions import db
-from app.models import Recon
+from app.models import Recon, AppInformations
 
 ns = api.namespace('recons', description='Operations related to recons.')
 
@@ -40,6 +40,7 @@ class ReconCollection(Resource):
         try:
             rc = Recon.from_dict(request.json)
             db.session.add(rc)
+            AppInformations.update()
             db.session.commit()
 
             return rc, 201

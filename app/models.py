@@ -108,6 +108,7 @@ class GPSCoord(db.Model):
             self.set_alt(alt)
 
         db.session.add(self)
+        AppInformations.update()
 
     def pythagore_distance_to(self, coord):
         """
@@ -281,6 +282,7 @@ class Gimbal(db.Model):
             self.set_roll(roll)
 
         db.session.add(self)
+        AppInformations.update()
 
     def set_yaw(self, yaw):
         """
@@ -450,6 +452,7 @@ class DroneParameters(db.Model):
             self.set_gimbal(gimbal)
 
         db.session.add(self)
+        AppInformations.update()
 
     def set_rotation(self, rotation):
         """
@@ -629,6 +632,7 @@ class FlightPlan(db.Model):
             self.__set_waypoints(waypoints)
 
         db.session.add(self)
+        AppInformations.update()
 
     def update_informations(self):
         """
@@ -726,6 +730,7 @@ class FlightPlan(db.Model):
         for recon in self.recons.all():
             recon.deep_delete()
         db.session.delete(self)
+        AppInformations.update()
 
 
 class Waypoint(db.Model):
@@ -843,6 +848,7 @@ class Waypoint(db.Model):
             self.flightplan.delete_builder_options()
 
         db.session.add(self)
+        AppInformations.update()
 
     def set_number(self, number):
         """
@@ -910,6 +916,7 @@ class Waypoint(db.Model):
         """
         db.session.delete(self.parameters)
         db.session.delete(self)
+        AppInformations.update()
 
 
 class FlightPlanBuilder(db.Model):
@@ -1204,6 +1211,7 @@ class Recon(db.Model):
         for resource in self.resources.all():
             resource.deep_delete()
         db.session.delete(self)
+        AppInformations.update()
 
 
 class Resource(db.Model):
@@ -1318,12 +1326,14 @@ class Resource(db.Model):
             self.filename = filename
             db.session.add(self)
             db.session.commit()
+            AppInformations.update()
             raise ValueExist('Resource content already exist')
         else:
             file.save(os.path.join(UPLOAD_FOLDER, filename))
             self.filename = filename
             db.session.add(self)
             db.session.commit()
+            AppInformations.update()
 
     def remove_content(self):
         """
@@ -1335,6 +1345,7 @@ class Resource(db.Model):
                 os.remove(path)
             self.filename = None
             db.session.add(self)
+            AppInformations.update()
 
     def __set_number(self, number):
         """
@@ -1393,3 +1404,4 @@ class Resource(db.Model):
         """
         self.remove_content()
         db.session.delete(self)
+        AppInformations.update()

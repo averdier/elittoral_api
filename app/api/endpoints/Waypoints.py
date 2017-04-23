@@ -5,7 +5,7 @@ from flask_restplus import Resource
 from app.api.serializers.waypoint import minimal_waypoint, post_waypoint, waypoint, waypoint_data_container
 from app.api import api
 from app.extensions import db
-from app.models import Waypoint
+from app.models import Waypoint, AppInformations
 
 ns = api.namespace('waypoints', description='Operations related to waypoints.')
 
@@ -42,6 +42,7 @@ class WaypointCollection(Resource):
             wp = Waypoint.from_dict(request.json)
             wp.flightplan.delete_builder_options()
             db.session.add(wp)
+            AppInformations.update()
             db.session.commit()
 
             return wp, 201

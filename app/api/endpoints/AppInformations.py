@@ -12,17 +12,16 @@ ns = api.namespace('infos', description='App Informations.')
 @ns.route('/')
 class Informations(Resource):
 
+    @api.marshal_with(app_informations)
     @api.response(200, 'Success', app_informations)
     def get(self) -> object:
         """
         Retourne les informations de l'application
         """
 
-        app_info = AppInformations.query.first()
+        app_info = AppInformations.query.filter_by(id = 1).first()
         if app_info is None:
-            app_info = AppInformations()
-            db.session.add(app_info)
-            db.session.commit()
+            abort(400, error='No App informations')
 
         return app_info
 

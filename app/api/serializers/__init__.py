@@ -1,8 +1,8 @@
 from flask_restplus import fields
 from app.api import api
 
-app_informations = api.Model('AppInformations', {
-    'created_on' : fields.DateTime(dt_format='iso8601', required = True, description = 'Last app update datetime'),
+app_informations = api.model('AppInformations', {
+    'updated_on' : fields.DateTime(dt_format='iso8601', required = True, description = 'Last app update datetime'),
 })
 
 minimal_gpscoord = api.model('MinimalGPSCoord', {
