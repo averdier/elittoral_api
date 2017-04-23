@@ -2,6 +2,7 @@ from flask import request
 from flask_restplus import abort
 from app.exceptions import ValueExist
 from flask_restplus import Resource
+from app.api.parsers import flightplan_parser
 from app.api.serializers.waypoint import minimal_waypoint, post_waypoint, waypoint, waypoint_data_container
 from app.api import api
 from app.extensions import db
@@ -13,6 +14,7 @@ ns = api.namespace('waypoints', description='Operations related to waypoints.')
 @ns.route('/')
 class WaypointCollection(Resource):
     @api.marshal_with(waypoint_data_container)
+    @api.expect(flightplan_parser)
     def get(self):
         """
         Retourne la liste des wayoints
@@ -21,7 +23,14 @@ class WaypointCollection(Resource):
         200
         :return: 
         """
-        return {'waypoints': Waypoint.query.all()}
+
+        args = flightplan_parser.parse_args()
+
+        if args['flightplan_id'] is not None:
+            result = Waypoint.query.filter_by(flightplan_id = args['flightplan_id'])
+        else:
+            result = Waypoint.query.all()
+        return {'waypoints': result}
 
     @api.marshal_with(waypoint, code=201, description='Waypoint successfully created.')
     @api.doc(responses={
