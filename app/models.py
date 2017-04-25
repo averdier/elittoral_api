@@ -29,7 +29,7 @@ class AppInformations(db.Model):
         if appinfo is None:
             appinfo = AppInformations()
         else:
-            appinfo.update_on = datetime.utcnow()
+            appinfo.updated_on = datetime.utcnow()
         db.session.add(appinfo)
 
 

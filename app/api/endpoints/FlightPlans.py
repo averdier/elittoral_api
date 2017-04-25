@@ -64,8 +64,8 @@ class FlightPlanCollection(Resource):
         try:
             fp = FlightPlan.from_dict(request.json)
             db.session.add(fp)
-            db.session.commit()
             AppInformations.update()
+            db.session.commit()
 
             if request.json.get('waypoints') is not None:
                 fp.update_from_dict({'waypoints': request.json.get('waypoints')})
