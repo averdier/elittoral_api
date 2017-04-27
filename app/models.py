@@ -639,6 +639,7 @@ class FlightPlan(db.Model):
                 db.session.commit()
 
                 self.waypoints = fp_params['waypoints']
+                self.builder_options = builder
 
                 self.update_informations()
 
