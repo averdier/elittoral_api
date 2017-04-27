@@ -2,7 +2,6 @@ from flask import request
 from flask_restplus import abort, marshal
 from app.exceptions import ValueExist
 from flask_restplus import Resource
-from app.api.business import build_vertical_flightplan
 from app.api.serializers.flightplan import flightplan_no_builder, flightplan_with_builder, flightplan_post, \
     flightplan_put, flightplan_data_wrapper, flightplan_dump_data_wrapper, flightplan_complete
 from app.api.serializers.builder import post_vertical_builder, builder_output

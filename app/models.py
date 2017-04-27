@@ -41,7 +41,7 @@ class GPSCoord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     lat = db.Column(db.Float, index=True)
     lon = db.Column(db.Float, index=True)
-    alt = db.Column(db.Float, index=True, default=1.0)
+    alt = db.Column(db.Float, index=True, default=1)
 
     @staticmethod
     def from_dict(args):
@@ -110,43 +110,6 @@ class GPSCoord(db.Model):
         db.session.add(self)
         AppInformations.update()
 
-    def to_polar(self):
-        """
-        Retourne la coordonnee polaire represent la coordonnee GPS
-        
-        :return: Coordonnee polaire
-        :rtype: dict
-            {
-                x : float,
-                y : flaot,
-                z : float
-            }
-        """
-        x = self.alt * math.cos(self.lat) * math.sin(self.lon)
-        y = self.alt * math.sin(self.lat)
-        z = self.alt * math.cos(self.lat) * math.cos(self.lon)
-
-        return { 'x':x ,'y':y, 'z':z }
-
-    def distance_to(self, coord):
-        """
-        Calcule la distance entre 2 coordonnees
-
-        :param coord: Coordonnee GPS
-        :type coord: GPSCoord
-
-        :return: Distance entre les deux coordonnees (en KM)
-        :rtype: float
-        """
-        p1 = self.to_polar()
-        p2 = coord.to_polar()
-
-        dx = p2['x'] - p1['x']
-        dy = p2['y'] - p1['y']
-        dz = p2['z'] - p1['z']
-
-        return math.sqrt(math.pow(dx, 2) + math.pow(dy, 2) + math.pow(dz, 2))
-
     def pythagore_distance_to(self, coord):
         """
         Calcule la distance entre 2 coordonnees
@@ -160,12 +123,8 @@ class GPSCoord(db.Model):
 
         dx = CONST_LON * (self.lon - coord.lon)
         dy = CONST_LAT * (self.lat - coord.lat)
-        dz = 0.0
 
-        if self.alt != coord.alt:
-            dz = (self.alt - coord.alt)
-
-        return math.sqrt(math.pow(dx, 2) + math.pow(dy, 2) + math.pow(dz, 2))
+        return math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))
 
     def set_lat(self, lat):
         """
@@ -677,7 +636,11 @@ class FlightPlan(db.Model):
         """
         distance = 0.0
         for i in range(1, self.waypoints.count()):
-            distance += self.waypoints[i].parameters.coord.distance_to(self.waypoints[i - 1].parameters.coord)
+            d = self.waypoints[i].parameters.coord.pythagore_distance_to(self.waypoints[i - 1].parameters.coord)
+            if d == 0:
+                distance += (self.waypoints[i].parameters.coord.alt - self.waypoints[i - 1].parameters.coord.alt) / 1000 # Car en metres
+            else:
+                distance += d
         self.distance = distance
 
     def __set_waypoints(self, w_array):
@@ -1070,7 +1033,8 @@ class FlightPlanBuilder(db.Model):
                                                       rotation=rotation,
                                                       gimbal=gimbal.clone()))]
         current_number += 1
-        distance = coord1.distance_to(coord2)
+
+        distance = coord1.pythagore_distance_to(coord2) * 1000 #Car increment en metres
         nb_it = int(distance / increment)
 
         for i in range(1, nb_it):
@@ -1080,7 +1044,7 @@ class FlightPlanBuilder(db.Model):
             last_waypoint = result[len(result) - 1]
 
             coord = last_waypoint.parameters.coord
-            distance = coord.distance_to(coord2)
+            distance = coord.pythagore_distance_to(coord2) * 1000
             coef_direct = increment / distance
 
             dx = coord.lon + coef_direct * (coord2.lon - coord.lon)

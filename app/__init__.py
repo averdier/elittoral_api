@@ -48,7 +48,7 @@ def create_app():
 
     with app.app_context():
         from app.models import FlightPlan, Waypoint, DroneParameters, Gimbal, GPSCoord, FlightPlanBuilder, Resource, Recon, AppInformations
-        db.drop_all()
+        #db.drop_all()
         db.create_all()
 
     return app
