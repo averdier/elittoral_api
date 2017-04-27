@@ -2,9 +2,9 @@ from flask import request
 from flask_restplus import abort, marshal
 from app.exceptions import ValueExist
 from flask_restplus import Resource
-from app.api.serializers.flightplan import flightplan_no_builder, flightplan_with_builder, flightplan_post, \
+from app.api.serializers.flightplan import flightplan_no_builder, flightplan_with_builder, flightplan_minimal, \
     flightplan_put, flightplan_data_wrapper, flightplan_dump_data_wrapper, flightplan_complete
-from app.api.serializers.builder import post_vertical_builder, builder_output
+from app.api.serializers.builder import post_vertical_builder
 from app.api import api
 from app.extensions import db
 from app.models import FlightPlan, FlightPlanBuilder, AppInformations
@@ -50,13 +50,13 @@ class FlightPlanCollection(Resource):
         409: 'Value Exist',
         400: 'Validation Error'
     })
-    @api.expect(flightplan_post)
+    @api.expect(flightplan_minimal)
     def post(self):
         """
         Add a FlightPlan
 
         201 Success
-        409 Unique value already exist
+        409 FlightPlan name already exist
         400 Validation error
         :return: 
         """
@@ -65,11 +65,6 @@ class FlightPlanCollection(Resource):
             db.session.add(fp)
             AppInformations.update()
             db.session.commit()
-
-            if request.json.get('waypoints') is not None:
-                fp.update_from_dict({'waypoints': request.json.get('waypoints')})
-                fp.updated_on = None
-                db.session.commit()
 
             return fp, 201
 
@@ -116,7 +111,6 @@ class FlightPlanItem(Resource):
 
         try:
             fp.update_from_dict(request.json)
-            db.session.commit()
 
             return 'FlightPlan successfully updated.', 204
 
@@ -149,9 +143,14 @@ class FlightBuilder(Resource):
         Build vertical FlightPlan
         """
         try:
+            fp_name = request.json.get('flightplan_name')
+            if FlightPlan.query.filter_by(name=fp_name).first() is not None:
+                abort(409, error='FlightPlan name already exist')
+
             builder = FlightPlanBuilder.from_dict(request.json)
 
-            fp = builder.build_vertical_flightplan(request.json.get('flightplan_name'))
+            fp_params = builder.build_vertical_flightplan()
+            fp = FlightPlan(name = fp_name, waypoints = fp_params['waypoints'], builder_options = fp_params['builder_options'])
             fp.update_informations()
 
             if request.json.get('save'):

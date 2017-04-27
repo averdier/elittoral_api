@@ -586,28 +586,30 @@ class FlightPlan(db.Model):
         :type args: dict
             {
                 'name'  : value, (optional|string|unique|min_size[3]|max_size[64])
-                'waypoints'      (optional)
-                    [
+                'builder_options'  (optional only used if present)
+                {
+                    'coord1'          :        (required)
                         {
-                            'date_created'' : value, (optional|string|valid_date_format[Y-m-d H:M:S])
-                            'number'        : value, (required|int|min[0]|max[99]|not_exist)
-                            'parameters'    : {      (required) 
-                                'rotation' : value,     (optional|float|min[-180]|max[180]|default[0])
-                                'coord' :               (required)
-                                    {
-                                        'lat' : value,      (required|float|min[-90]|max[90])
-                                        'lon' : value,      (required|float|min[-180]|max[180])
-                                        'alt' : value       (optionnal|float|default[1])
-                                    }
-                                'gimbal' :              (optional, else need minimum 1 value)
-                                    {
-                                        'yaw'   : value, (optionnal|float|min[-180]|max[180]|default[0])
-                                        'pitch' : value, (optionnal|float|min[-180]|max[180]|default[90])
-                                        'roll'  : value  (optionnal|float|min[-180]|max[180]|default[0])
-                                    }
+                            'lat' : value, (required|float|min[-90]|max[90])
+                            'lon' : value (required|float|min[-180]|max[180])
+                        },
+                    'coord2'          :        (required)
+                        {
+                            'lat' : value, (required|float|min[-90]|max[90])
+                            'lon' : value (required|float|min[-180]|max[180])
+                        },
+                    'alt_start'      : value, (required|float|min[>0|default[1])
+                    'alt_end'        : value, (required|float|min[>0])
+                    'h_increment'    : value, (required|float|min[>0)
+                    'v_increment'    : value, (required|float|min[>0)
+                    'r_otation'      : value, (optional|int|min[-180]|max[180]|default[0])
+                    'd_gimbal'       :        (optional, else need minimum 1 value)
+                        {
+                            'yaw'   : value, (optionnal|float|min[-180]|max[180]|default[0])
+                            'pitch' : value, (optionnal|float|min[-180]|max[180]|default[90])
+                            'roll'  : value  (optionnal|float|min[-180]|max[180]|default[0])
                         }
-
-                    ]
+                }
             }
 
         :raise ValueError: Si dict == None ou si erreur de validation du contenu
@@ -617,18 +619,32 @@ class FlightPlan(db.Model):
             raise ValueError('FlightPlan args required')
 
         name = args.get('name')
-        waypoints = args.get('waypoints')
+        build_options = args.get('builder_options')
 
-        if name is None and waypoints is None:
+        if name is None and build_options is None:
             raise ValueError('No data found in FlightPlan args')
 
         if name is not None:
             self.__set_name(name)
-        if waypoints is not None:
-            self.__set_waypoints(waypoints)
+
+        if build_options is not None:
+            builder = FlightPlanBuilder.from_dict(build_options)
+            fp_params = builder.build_vertical_flightplan()
+
+            if self.waypoints.count() > 0:
+                for waypoint in self.waypoints.all():
+                    waypoint.deep_delete()
+
+                self.delete_builder_options()
+                db.session.commit()
+
+                self.waypoints = fp_params['waypoints']
+
+                self.update_informations()
 
         db.session.add(self)
         AppInformations.update()
+        db.session.commit()
 
     def update_informations(self):
         """
@@ -638,56 +654,11 @@ class FlightPlan(db.Model):
         for i in range(1, self.waypoints.count()):
             d = self.waypoints[i].parameters.coord.pythagore_distance_to(self.waypoints[i - 1].parameters.coord)
             if d == 0:
-                distance += (self.waypoints[i].parameters.coord.alt - self.waypoints[i - 1].parameters.coord.alt) / 1000 # Car en metres
+                distance += (self.waypoints[i].parameters.coord.alt - self.waypoints[
+                    i - 1].parameters.coord.alt) / 1000  # Car en metres
             else:
                 distance += d
         self.distance = distance
-
-    def __set_waypoints(self, w_array):
-        """
-        Definie les waypoints du plan de vol
-
-        :param w_array: Tableau des waypoint
-        :type w_array: dict
-            [
-                {
-                    'date_created'' : value, (optional|string|valid_date_format[Y-m-d H:M:S])
-                    'number'        : value, (required|int|min[0]|max[99]|not_exist)
-                    'parameters'    : {      (required) 
-                        'rotation' : value,     (optional|int|min[-180]|max[180]|default[0])
-                        'coord' :               (required)
-                            {
-                                'lat' : value,      (required|float|min[-90]|max[90])
-                                'lon' : value,      (required|float|min[-180]|max[180])
-                                'alt' : value       (optionnal|float|default[1])
-                            }
-                        'gimbal' :              (optional, else need minimum 1 value)
-                            {
-                                'yaw'   : value, (optionnal|float|min[-180]|max[180]|default[0])
-                                'pitch' : value, (optionnal|float|min[-180]|max[180]|default[90])
-                                'roll'  : value  (optionnal|float|min[-180]|max[180]|default[0])
-                            }
-                }
-
-            ]
-        """
-        if w_array is None:
-            raise ValueError('FlightPlan Waypoint list required')
-
-        if self.waypoints.count() > 0:
-            for waypoint in self.waypoints.all():
-                waypoint.deep_delete()
-
-            self.delete_builder_options()
-            db.session.commit()
-
-        for waypoint in w_array:
-            waypoint['flightplan_id'] = self.id
-            w = Waypoint.from_dict(waypoint)
-
-            db.session.add(w)
-
-        self.update_informations()
 
     def __set_name(self, name):
         """
@@ -709,8 +680,10 @@ class FlightPlan(db.Model):
         if len(name) < 3 or len(name) > 64:
             raise ValueError('FlightPlan name length have to be between 3 and 64')
 
-        if FlightPlan.query.filter_by(name=name).first() is not None:
+        fp = FlightPlan.query.filter_by(name=name).first()
+        if fp is not None and fp.id != self.id:
             raise ValueError('FlightPlan name already exist')
+
         self.name = name
 
     def delete_builder_options(self):
@@ -918,6 +891,10 @@ class Waypoint(db.Model):
         db.session.delete(self)
         AppInformations.update()
 
+    def clone(self):
+        return Waypoint(created_on=self.created_on, updated_on=self.updated_on, number=self.number,
+                        parameters=self.parameters)
+
 
 class FlightPlanBuilder(db.Model):
     """
@@ -956,7 +933,7 @@ class FlightPlanBuilder(db.Model):
                         'lat' : value, (required|float|min[-90]|max[90])
                         'lon' : value (required|float|min[-180]|max[180])
                     },
-                'alt_start'      : value, (optional|float|min[>0|default[1])
+                'alt_start'      : value, (required|float|min[>0|default[1])
                 'alt_end'        : value, (required|float|min[>0])
                 'h_increment'    : value, (required|float|min[>0)
                 'v_increment'    : value, (required|float|min[>0)
@@ -980,9 +957,7 @@ class FlightPlanBuilder(db.Model):
         builder.set_coord1(args.get('coord1'))
         builder.set_coord2(args.get('coord2'))
 
-        alt_start = args.get('alt_start')
-        if alt_start is not None:
-            builder.set_alt_start(alt_start)
+        builder.set_alt_start(args.get('alt_start'))
 
         builder.set_alt_end(args.get('alt_end'))
         builder.set_h_increment(args.get('h_increment'))
@@ -1034,7 +1009,7 @@ class FlightPlanBuilder(db.Model):
                                                       gimbal=gimbal.clone()))]
         current_number += 1
 
-        distance = coord1.pythagore_distance_to(coord2) * 1000 #Car increment en metres
+        distance = coord1.pythagore_distance_to(coord2) * 1000  # Car increment en metres
         nb_it = int(distance / increment)
 
         for i in range(1, nb_it):
@@ -1065,19 +1040,13 @@ class FlightPlanBuilder(db.Model):
                                                           gimbal=gimbal.clone())))
         return result
 
-    def build_vertical_flightplan(self, flightplan_name):
+    def build_vertical_flightplan(self):
         """
         Retourne un plan de vol vertical a partir des parametres
-
-        :param flightplan_name: Nom du plan de vol a generer
-        :type flightplan_name: str
         
         :return: Plan de vol
         :rtype: FlightPlan
         """
-
-        if FlightPlan.query.filter_by(name=flightplan_name).first() is not None:
-            raise ValueExist('FlightPlan name already exist')
 
         way_result = []
         current_number = 0
@@ -1086,7 +1055,8 @@ class FlightPlanBuilder(db.Model):
         self.coord1.alt = alt_current
         self.coord2.alt = alt_current
 
-        line = self.__build_line_with_increment(self.coord1, self.coord2, self.h_increment, current_number, self.d_rotation, self.d_gimbal)
+        line = self.__build_line_with_increment(self.coord1, self.coord2, self.h_increment, current_number,
+                                                self.d_rotation, self.d_gimbal)
         way_result.append(line)
 
         current_number = len(line)
@@ -1135,7 +1105,7 @@ class FlightPlanBuilder(db.Model):
             for j in range(0, len(way_result[i])):
                 waypoint_list.append(way_result[i][j])
 
-        return FlightPlan(name = flightplan_name, waypoints = waypoint_list, builder_options = self)
+        return {'waypoints' : waypoint_list, 'builder_options' : self}
 
     def set_alt_start(self, alt_start):
         """

@@ -6,7 +6,7 @@ from app.api.serializers.waypoint import minimal_waypoint
 vertical_builder_options = api.model('VerticalBuilderOptions', {
     'coord1' : fields.Nested(minimal_gpscoord, requird = True, description='GPS coord1'),
     'coord2' : fields.Nested(minimal_gpscoord, requird = True, description='GPS coord2'),
-    'alt_start' : fields.Float(required = False, description = 'Start altitude of FlightPlan (m) (]0, [)', min = 0, exclusiveMin=True, default = 1),
+    'alt_start' : fields.Float(required = True, description = 'Start altitude of FlightPlan (m) (]0, [)', min = 0, exclusiveMin=True, default = 1),
     'alt_end' : fields.Float(required = True, description = 'End altitude of FlightPlan (m) ([alt_start, [)', min = 0, exclusiveMin=True),
     'h_increment' : fields.Float(required = True, description = 'Horizontal Increment (m) (]0, [)', min = 0, exclusiveMin=True),
     'v_increment' : fields.Float(required = True, description = 'Vertical Increment (m) (]0, [)', min = 0, exclusiveMin=True),

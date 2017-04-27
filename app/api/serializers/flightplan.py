@@ -9,13 +9,9 @@ flightplan_minimal = api.model('FlightPlan Minimal', {
     'created_on' : fields.DateTime(dt_format='iso8601', required = False, description = 'Datetime of FlightPlan creation (iso8601)'),
 })
 
-flightplan_post = api.inherit('FlightPlan Post', flightplan_minimal, {
-    'waypoints' : fields.List(fields.Nested(minimal_waypoint), description = 'Waypoint list of Flighplan')
-})
-
 flightplan_put = api.model('FlightPlan Put', {
     'name' : fields.String(description = 'Flightplan name', min_length = 3, max_length = 64),
-    'waypoints' : fields.List(fields.Nested(minimal_waypoint), description = 'Waypoint list of Flighplan')
+    'builder_options' : fields.Nested(vertical_builder_options, description="Build otions for update")
 })
 
 flightplan = api.inherit('FlightPlan', flightplan_minimal, {
