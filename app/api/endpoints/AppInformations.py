@@ -16,7 +16,7 @@ class Informations(Resource):
     @api.response(200, 'Success', app_informations)
     def get(self) -> object:
         """
-        Retourne les informations de l'application
+        Get current App informations
         """
 
         app_info = AppInformations.query.filter_by(id = 1).first()

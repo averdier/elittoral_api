@@ -18,7 +18,7 @@ class FlightPlanDump(Resource):
     @api.response(200, 'Success', flightplan_dump_data_wrapper)
     def get(self):
         """
-        Retourne le dump des plans de vols
+        Get FlightPlans Dump
         """
 
         result = []
@@ -39,7 +39,7 @@ class FlightPlanCollection(Resource):
     @api.marshal_with(flightplan_data_wrapper)
     def get(self):
         """
-        Retourne la liste des plans de vol
+        Get FlightPlan List
         """
 
         flightplans = FlightPlan.query.all()
@@ -54,11 +54,11 @@ class FlightPlanCollection(Resource):
     @api.expect(flightplan_post)
     def post(self):
         """
-        Ajoute un plan de vol
+        Add a FlightPlan
 
-        201 si succes
-        409 si une valeur unique existe deja
-        400 si erreur de validation
+        201 Success
+        409 Unique value already exist
+        400 Validation error
         :return: 
         """
         try:
@@ -87,11 +87,10 @@ class FlightPlanItem(Resource):
     @api.response(200, 'Success', flightplan_complete)
     def get(self, id):
         """
-        Retourne un plan de vol
+        Get a FlightPlan
 
-        200
-        :param id: 
-        :return: 
+        200 Success
+        :param id: FlightPlan unique Id
         """
         fp = FlightPlan.query.get_or_404(id)
         if fp.builder_options is None:
@@ -107,13 +106,12 @@ class FlightPlanItem(Resource):
     @api.expect(flightplan_put)
     def put(self, id):
         """
-        Modifie un plan de vol
+        Update a FlightPlan
 
-        204 si succes
-        409 si une valeur unique existe deja
-        400 si erreur de validation
-        :param id: 
-        :return: 
+        204 Success
+        409 Unique value already exist
+        400 Validation error
+        :param id: FlightPlan unique Id
         """
         fp = FlightPlan.query.get_or_404(id)
 
@@ -131,11 +129,10 @@ class FlightPlanItem(Resource):
     @api.response(204, 'FlightPlan successfully deleted.')
     def delete(self, id):
         """
-        Supprime un plan de vol
+        Delete a FlightPlan
 
-        204 success
-        :param id: 
-        :return: 
+        204 Success
+        :param id: FlightPlan unique Id
         """
         fp = FlightPlan.query.get_or_404(id)
         fp.deep_delete()
@@ -150,15 +147,12 @@ class FlightBuilder(Resource):
     @api.expect(post_vertical_builder)
     def post(self):
         """
-        Retourne un plan de vol vertical
-        :return: 
+        Build vertical FlightPlan
         """
         try:
-
-            builder_result = build_vertical_flightplan(request.json)
             builder = FlightPlanBuilder.from_dict(request.json)
 
-            fp = FlightPlan(name=builder_result['name'], waypoints=builder_result['waypoints'], builder_options=builder)
+            fp = builder.build_vertical_flightplan(request.json.get('flightplan_name'))
             fp.update_informations()
 
             if request.json.get('save'):

@@ -110,6 +110,43 @@ class GPSCoord(db.Model):
         db.session.add(self)
         AppInformations.update()
 
+    def to_polar(self):
+        """
+        Retourne la coordonnee polaire represent la coordonnee GPS
+        
+        :return: Coordonnee polaire
+        :rtype: dict
+            {
+                x : float,
+                y : flaot,
+                z : float
+            }
+        """
+        x = self.alt * math.cos(self.lat) * math.sin(self.lon)
+        y = self.alt * math.sin(self.lat)
+        z = self.alt * math.cos(self.lat) * math.cos(self.lon)
+
+        return { 'x':x ,'y':y, 'z':z }
+
+    def distance_to(self, coord):
+        """
+        Calcule la distance entre 2 coordonnees
+
+        :param coord: Coordonnee GPS
+        :type coord: GPSCoord
+
+        :return: Distance entre les deux coordonnees (en KM)
+        :rtype: float
+        """
+        p1 = self.to_polar()
+        p2 = coord.to_polar()
+
+        dx = p2['x'] - p1['x']
+        dy = p2['y'] - p1['y']
+        dz = p2['z'] - p1['z']
+
+        return math.sqrt(math.pow(dx, 2) + math.pow(dy, 2) + math.pow(dz, 2))
+
     def pythagore_distance_to(self, coord):
         """
         Calcule la distance entre 2 coordonnees
@@ -359,7 +396,7 @@ class DroneParameters(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     coord_id = db.Column(db.Integer, db.ForeignKey('gps_coord.id'))
     gimbal_id = db.Column(db.Integer, db.ForeignKey('gimbal.id'))
-    rotation = db.Column(db.Integer, default=0)
+    rotation = db.Column(db.Float, default=0)
 
     coord = db.relationship('GPSCoord')
     gimbal = db.relationship('Gimbal')
@@ -372,7 +409,7 @@ class DroneParameters(db.Model):
         :param args: Dictionnaire representant les parametres
         :type  args: dict
             {
-                'rotation' : value, (optional|int|min[-180]|max[180]|default[0])
+                'rotation' : value, (optional|float|min[-180]|max[180]|default[0])
                 'coord' :           (required)
                     {
                         'lat' : value, (required|float|min[-90]|max[90])
@@ -415,7 +452,7 @@ class DroneParameters(db.Model):
         :param args: Dictionnaire representant les parametres
         :type args: dict
             {
-                'rotation' : value, (optional|int|min[-180]|max[180])
+                'rotation' : value, (optional|float|min[-180]|max[180])
                 'coord' :           (optional)
                     {
                         'lat' : value, (optional|float|min[-90]|max[90])
@@ -459,16 +496,16 @@ class DroneParameters(db.Model):
         Modifie la rotation du drone sur l'axe z
 
         :param rotation: Rotation du drone sur l'axe z
-        :type rotation: int|string
+        :type rotation: float|string
 
         :raise ValueError: Si rotation == None ou si rotation < -180 ou rotation > 180
-        :raise TypeError: Si rotation n'est pas un int et qu'il ne peux pas etre converti en int
+        :raise TypeError: Si rotation n'est pas un double et qu'il ne peux pas etre converti en double
         """
         if rotation is None:
             raise ValueError('DroneParameters rotation is required')
-        if not is_int(rotation):
-            raise TypeError('DroneParameters rotation have to be a int')
-        rotation = int(rotation)
+        if not is_float(rotation):
+            raise TypeError('DroneParameters rotation have to be a float')
+        rotation = float(rotation)
 
         if rotation < -180 or rotation > 180:
             raise ValueError('DroneParameters rotation have to be between -180 and 180')
@@ -596,7 +633,7 @@ class FlightPlan(db.Model):
                             'date_created'' : value, (optional|string|valid_date_format[Y-m-d H:M:S])
                             'number'        : value, (required|int|min[0]|max[99]|not_exist)
                             'parameters'    : {      (required) 
-                                'rotation' : value,     (optional|int|min[-180]|max[180]|default[0])
+                                'rotation' : value,     (optional|float|min[-180]|max[180]|default[0])
                                 'coord' :               (required)
                                     {
                                         'lat' : value,      (required|float|min[-90]|max[90])
@@ -640,7 +677,7 @@ class FlightPlan(db.Model):
         """
         distance = 0.0
         for i in range(1, self.waypoints.count()):
-            distance += self.waypoints[i].parameters.coord.pythagore_distance_to(self.waypoints[i - 1].parameters.coord)
+            distance += self.waypoints[i].parameters.coord.distance_to(self.waypoints[i - 1].parameters.coord)
         self.distance = distance
 
     def __set_waypoints(self, w_array):
@@ -759,7 +796,7 @@ class Waypoint(db.Model):
                 'created_on''   : value, (optional|string|valid_date_format[Y-m-d H:M:S])
                 'number'        : value, (required|int|min[0]|max[98]|not_exist)
                 'parameters'        : {      (required) 
-                    'rotation' : value,     (optional|int|min[-180]|max[180]|default[0])
+                    'rotation' : value,     (optional|float|min[-180]|max[180]|default[0])
                     'coord' :               (required)
                         {
                             'lat' : value,      (required|float|min[-90]|max[90])
@@ -812,7 +849,7 @@ class Waypoint(db.Model):
             {
                 'number'        : value, (optional|int|min[0]|max[99]|not_exist)
                 'parameters'    : {      (optional) 
-                    'rotation' : value,     (optional|int|min[-180]|max[180]|default[0])
+                    'rotation' : value,     (optional|float|min[-180]|max[180]|default[0])
                     'coord' :               (required)
                         {
                             'lat' : value,      (required|float|min[-90]|max[90])
@@ -999,6 +1036,142 @@ class FlightPlanBuilder(db.Model):
             builder.d_gimbal = Gimbal()
 
         return builder
+
+    def __build_line_with_increment(self, coord1, coord2, increment, start_number, rotation, gimbal):
+        """
+        Retourne une liste de waypoint representant une ligne 
+
+        :param coord1: Coordonnee 1
+        :type coord1: GPSCoord
+
+        :param coord2: Coordonnee 2
+        :type coord2: GPSCoord
+
+        :param increment: Increment (m)
+        :type increment: float
+
+        :param start_number: Numero de depart pour la numerotation des waypoints
+        :type start_number: int
+
+        :param rotation: Rotation du drone
+        :type rotation: float
+
+        :param gimbal: Parametres du gimbal du drone
+        :type gimbal: Gimbal
+
+        :return: Liste des waypoints representant la ligne
+        :rtype: list<Waypoint>
+        """
+
+        current_number = start_number
+
+        result = [Waypoint(number=current_number,
+                           parameters=DroneParameters(coord=coord1.clone(),
+                                                      rotation=rotation,
+                                                      gimbal=gimbal.clone()))]
+        current_number += 1
+        distance = coord1.distance_to(coord2)
+        nb_it = int(distance / increment)
+
+        for i in range(1, nb_it):
+            if current_number > 97:
+                break
+
+            last_waypoint = result[len(result) - 1]
+
+            coord = last_waypoint.parameters.coord
+            distance = coord.distance_to(coord2)
+            coef_direct = increment / distance
+
+            dx = coord.lon + coef_direct * (coord2.lon - coord.lon)
+            dy = coord.lat + coef_direct * (coord2.lat - coord.lat)
+            dz = coord.alt + coef_direct * (coord2.alt - coord.alt)
+
+            new_coord = GPSCoord(lat=dy, lon=dx, alt=dz)
+
+            result.append(Waypoint(number=current_number,
+                                   parameters=DroneParameters(coord=new_coord,
+                                                              rotation=rotation,
+                                                              gimbal=gimbal.clone())))
+            current_number += 1
+
+        result.append(Waypoint(number=current_number,
+                               parameters=DroneParameters(coord=coord2.clone(),
+                                                          rotation=rotation,
+                                                          gimbal=gimbal.clone())))
+        return result
+
+    def build_vertical_flightplan(self, flightplan_name):
+        """
+        Retourne un plan de vol vertical a partir des parametres
+
+        :param flightplan_name: Nom du plan de vol a generer
+        :type flightplan_name: str
+        
+        :return: Plan de vol
+        :rtype: FlightPlan
+        """
+
+        if FlightPlan.query.filter_by(name=flightplan_name).first() is not None:
+            raise ValueExist('FlightPlan name already exist')
+
+        way_result = []
+        current_number = 0
+        alt_current = self.alt_start
+
+        self.coord1.alt = alt_current
+        self.coord2.alt = alt_current
+
+        line = self.__build_line_with_increment(self.coord1, self.coord2, self.h_increment, current_number, self.d_rotation, self.d_gimbal)
+        way_result.append(line)
+
+        current_number = len(line)
+        alt_current += self.v_increment
+        reverse = True
+
+        while current_number < 99 and alt_current <= self.alt_end:
+            last_line = way_result[len(way_result) - 1]
+            new_line = []
+
+            # Liste des position a parcourir, dans un sens ou dans l'autre
+            pos = []
+            if reverse:
+                reverse = False
+                i = len(last_line) - 1
+                while i >= 0:
+                    pos.append(i)
+                    i -= 1
+            else:
+                reverse = True
+                for i in range(0, len(last_line)):
+                    pos.append(i)
+
+            # Parcourir toute les position
+            for i in range(0, len(pos)):
+                if current_number > 98:
+                    break
+                prev_waypoint = last_line[pos[i]]
+                new_coord = GPSCoord(lat=prev_waypoint.parameters.coord.lat,
+                                     lon=prev_waypoint.parameters.coord.lon,
+                                     alt=alt_current)
+
+                new_waypoint = Waypoint(number=current_number,
+                                        parameters=DroneParameters(coord=new_coord,
+                                                                   rotation=prev_waypoint.parameters.rotation,
+                                                                   gimbal=prev_waypoint.parameters.gimbal.clone()))
+                new_line.append(new_waypoint)
+                current_number += 1
+
+            way_result.append(new_line)
+            alt_current += self.v_increment
+
+        # Applatir les lignes
+        waypoint_list = []
+        for i in range(0, len(way_result)):
+            for j in range(0, len(way_result[i])):
+                waypoint_list.append(way_result[i][j])
+
+        return FlightPlan(name = flightplan_name, waypoints = waypoint_list, builder_options = self)
 
     def set_alt_start(self, alt_start):
         """
@@ -1240,7 +1413,7 @@ class Resource(db.Model):
                 'created_on'' : value, (optional|string|valid_date_format)
                 'number'        : value, (required|int|min[0]|max[99]|not_exist)
                 'parameters'    : {      (required) 
-                    'rotation' : value,     (optional|int|min[-180]|max[180]|default[0])
+                    'rotation' : value,     (optional|float|min[-180]|max[180]|default[0])
                     'coord' :               (required)
                         {
                             'lat' : value,      (required|float|min[-90]|max[90])

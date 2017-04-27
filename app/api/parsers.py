@@ -6,3 +6,6 @@ upload_parser.add_argument('file', location='files', type=FileStorage, required=
 
 flightplan_parser = api.parser()
 flightplan_parser.add_argument('flightplan_id', required=False, type=int, help='FlightPlan unique ID')
+
+recon_parser = api.parser()
+recon_parser.add_argument('recon_id', required=False, type=int, help='Recon unique ID')

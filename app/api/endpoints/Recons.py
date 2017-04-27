@@ -1,7 +1,7 @@
 from flask import request
 from flask_restplus import abort
-from app.exceptions import ValueExist
 from flask_restplus import Resource
+from app.api.parsers import flightplan_parser
 from app.api.serializers.recon import recon_post, recon, recon_data_wrapper, recon_with_resources
 from app.api import api
 from app.extensions import db
@@ -13,15 +13,20 @@ ns = api.namespace('recons', description='Operations related to recons.')
 @ns.route('/')
 class ReconCollection(Resource):
     @api.marshal_with(recon_data_wrapper)
+    @api.expect(flightplan_parser)
     def get(self):
         """
-        Retourne la liste des reconnaissances
-        <!> A revoir pour integrer &flightplan_id = 
+        Get Recons list
 
-        200
-        :return: 
+        200 Success
         """
-        return {'recons': Recon.query.all()}
+        args = flightplan_parser.parse_args()
+
+        if args['flightplan_id'] is not None:
+            result = Recon.query.filter_by(flightplan_id = args['flightplan_id'])
+        else:
+            result = Recon.query.all()
+        return {'recons': result}
 
     @api.marshal_with(recon, code=201, description='Recon successfully created.')
     @api.doc(responses={
@@ -31,11 +36,10 @@ class ReconCollection(Resource):
     @api.expect(recon_post)
     def post(self):
         """
-        Ajoute une reconnaissance
+        Add a Recon
 
-        201 si succes
-        400 si erreur de validation
-        :return: 
+        201 Success
+        400 Validation error
         """
         try:
             rc = Recon.from_dict(request.json)
@@ -55,11 +59,11 @@ class ReconItem(Resource):
     @api.marshal_with(recon_with_resources)
     def get(self, id):
         """
-        Retourne une reconnaissance
+        Get a Recon
 
-        200
-        :param id: 
-        :return: 
+        200 Success
+        404 Recon not found
+        :param id: Recon unique Id
         """
         rc = Recon.query.get_or_404(id)
         return rc
@@ -67,11 +71,11 @@ class ReconItem(Resource):
     @api.response(204, 'Recon successfully deleted.')
     def delete(self, id):
         """
-        Supprime une reconnaissance
+        Delete a Recon
 
-        204 success
-        :param id: 
-        :return: 
+        204 Success
+        404 Recon not found
+        :param id: Recon unique Id
         """
         rc = Recon.query.get_or_404(id)
         rc.deep_delete()

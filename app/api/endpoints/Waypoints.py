@@ -17,10 +17,9 @@ class WaypointCollection(Resource):
     @api.expect(flightplan_parser)
     def get(self):
         """
-        Retourne la liste des wayoints
-        <!> A revoir pour integrer &flightplan_id = 
-
-        200
+        Get Waypoint list
+        
+        200 Success
         :return: 
         """
 
@@ -40,11 +39,11 @@ class WaypointCollection(Resource):
     @api.expect(post_waypoint)
     def post(self):
         """
-        Ajoute un wayoint
+        Add a Waypoint
 
-        201 si succes
-        409 si une valeur unique existe deja
-        400 si erreur de validation
+        201 Success
+        409 Unique value already exist
+        400 Validation error
         :return: 
         """
         try:
@@ -68,11 +67,11 @@ class WaypointItem(Resource):
     @api.marshal_with(waypoint)
     def get(self, id):
         """
-        Retourne un wayoint
+        Get a Waypoint
 
-        200
-        :param id: 
-        :return: 
+        200 Success
+        404 Waypoint not found
+        :param id: Waypoint unique Id
         """
         wp = Waypoint.query.get_or_404(id)
         return wp
@@ -85,13 +84,13 @@ class WaypointItem(Resource):
     @api.expect(minimal_waypoint)
     def put(self, id):
         """
-        Modifie un wayoint
+        Update a Waypoint
 
-        204 success
-        409 si une valeur unique existe deja
-        400 si erreur de validation 
-        :param id: 
-        :return: 
+        204 Success
+        404 Waypoint not found
+        409 Unique value already exist
+        400 Validation error
+        :param id: Waypoint unique Id
         """
         wp = Waypoint.query.get_or_404(id)
 
@@ -109,11 +108,11 @@ class WaypointItem(Resource):
     @api.response(204, 'Waypoint successfully deleted.')
     def delete(self, id):
         """
-        Supprime un wayoint
+        Delete a Waypoint
 
-        204 success
-        :param id: 
-        :return: 
+        204 Success
+        404 Waypoint not found
+        :param id: Waypoint unique Id
         """
         wp = Waypoint.query.get_or_404(id)
         wp.deep_delete()

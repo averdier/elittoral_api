@@ -6,7 +6,7 @@ from app.api.serializers.recon import recon_with_resources
 
 flightplan_minimal = api.model('FlightPlan Minimal', {
     'name' : fields.String(required = True, description = 'Flightplan name', min_length = 3, max_length = 64),
-    'created_on' : fields.DateTime(dt_format='iso8601', required = False, description = 'Datetime of FlightPlan creation'),
+    'created_on' : fields.DateTime(dt_format='iso8601', required = False, description = 'Datetime of FlightPlan creation (iso8601)'),
 })
 
 flightplan_post = api.inherit('FlightPlan Post', flightplan_minimal, {
@@ -20,7 +20,7 @@ flightplan_put = api.model('FlightPlan Put', {
 
 flightplan = api.inherit('FlightPlan', flightplan_minimal, {
     'id' : fields.Integer(required = True, description="FlightPlan unique ID"),
-    'updated_on' : fields.DateTime(dt_format='iso8601', required = False, description = 'Last FlightPlan update'),
+    'updated_on' : fields.DateTime(dt_format='iso8601', required = False, description = 'DateTime of last FlightPlan update (iso8601)'),
     'waypoints_count' : fields.Integer(attribute=lambda x: x.waypoints.count()),
     'recons_count' : fields.Integer(attribute=lambda x: x.recons.count()),
     'distance' : fields.Float(required = False, description = 'FlightPlan distance (km)'),
@@ -39,7 +39,7 @@ flightplan_complete = api.inherit('FlightPlan Complete', flightplan_with_builder
 })
 
 flightplan_dump_data_wrapper = api.model('FlightPlan DumpDataWrapper', {
-    'flightplans': fields.List(fields.Nested(flightplan_complete))
+    'flightplans': fields.List(fields.Nested(flightplan_complete), description='List of FlightPlans')
 })
 
 flightplan_data_wrapper = api.model('FlightPlan DataWrapper', {

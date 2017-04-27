@@ -4,7 +4,7 @@ from flask import request, send_from_directory
 from flask_restplus import abort
 from flask_restplus import Resource
 from app.exceptions import ValueExist
-from app.api.parsers import upload_parser
+from app.api.parsers import upload_parser, recon_parser
 from app.api.serializers.resource import resource_post, resource_data_wrapper, resource
 from app.api import api
 from app.extensions import db
@@ -16,15 +16,20 @@ ns = api.namespace('resources', description='Operations related to resources.')
 @ns.route('/')
 class ResourceCollection(Resource):
     @api.marshal_with(resource_data_wrapper)
+    @api.expect(recon_parser)
     def get(self):
         """
-        Retourne la liste des ressource
-        <!> A revoir pour integrer &recon_id = 
+        Get Resources list
 
-        200
-        :return: 
+        200 Success
         """
-        return {'resources': ReconResource.query.all()}
+        args = recon_parser.parse_args()
+
+        if args['recon_id'] is not None:
+            result = ReconResource.query.filter_by(recon_id=args['recon_id'])
+        else:
+            result = ReconResource.query.all()
+        return {'resources': result}
 
     @api.marshal_with(resource, code=201, description='Resource successfully created.')
     @api.doc(responses={
@@ -34,10 +39,10 @@ class ResourceCollection(Resource):
     @api.expect(resource_post)
     def post(self):
         """
-        Ajoute une ressource
+        Add a Resource
 
-        201 si succes
-        400 si erreur de validation
+        201 Success
+        400 Validation error
         :return: 
         """
         try:
@@ -55,15 +60,14 @@ class ResourceCollection(Resource):
 @ns.route('/<int:id>')
 @api.response(404, 'Resource not found.')
 class ResourceItem(Resource):
-
     @api.marshal_with(resource)
     def get(self, id):
         """
-        Retourne une resource
+        Get a Resource
 
-        200
-        :param id: 
-        :return: 
+        200 Success
+        404 Resource not found
+        :param id: Resource unique Id
         """
         res = ReconResource.query.get_or_404(id)
         return res
@@ -71,11 +75,11 @@ class ResourceItem(Resource):
     @api.response(204, 'Resource successfully deleted.')
     def delete(self, id):
         """
-        Supprime une ressource
+        Delete a Resource
 
-        204 success
-        :param id: 
-        :return: 
+        204 Success
+        404 Resource not found
+        :param id: Resource unique Id
         """
         res = ReconResource.query.get_or_404(id)
         res.deep_delete()
@@ -85,14 +89,18 @@ class ResourceItem(Resource):
 
 
 @ns.route('/<int:id>/content')
-@api.response(404, 'Waypoint not found.')
+@api.response(404, 'Resource not found.')
 class ContentResourceItem(Resource):
-
     @api.marshal_with(resource, code=201, description='Resource content successfully uploaded.')
     @api.expect(upload_parser)
     def post(self, id):
         """
-        Ajoute le contenu de la ressource si celui n'existe pas
+        Set Resource content
+        
+        200 Success
+        404 Resource not found
+        409 Content already exist
+        400 Validation error
         """
         res = ReconResource.query.get_or_404(id)
         args = upload_parser.parse_args()
@@ -112,11 +120,12 @@ class ContentResourceItem(Resource):
     })
     def get(self, id):
         """
-        Retourne le contenu de la ressource si il existe
+        Get Resource content
 
-        200
-        :param id: 
-        :return: 
+        200 Success
+        404 Resource not found
+        400 Resource have no content
+        :param id: Resoure unique Id
         """
 
         res = ReconResource.query.get_or_404(id)
@@ -132,7 +141,10 @@ class ContentResourceItem(Resource):
     @api.response(204, 'Resource content successfully deleted.')
     def delete(self, id):
         """
-        Supprime le contenu de la ressource
+        Delete Resource content
+        
+        204 Success
+        404 Resource not found
         """
         res = ReconResource.query.get_or_404(id)
         res.remove_content()
