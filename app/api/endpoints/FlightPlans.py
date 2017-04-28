@@ -2,8 +2,8 @@ from flask import request
 from flask_restplus import abort, marshal
 from app.exceptions import ValueExist
 from flask_restplus import Resource
-from app.api.serializers.flightplan import flightplan_no_builder, flightplan_with_builder, flightplan_minimal, \
-    flightplan_put, flightplan_data_wrapper, flightplan_dump_data_wrapper, flightplan_complete
+from app.api.serializers.flightplan import flightplan, flightplan_complete_with_builder, flightplan_minimal, \
+    flightplan_put, flightplan_data_wrapper, flightplan_dump_data_wrapper, flightplan_complete, flightplan_builder_result
 from app.api.serializers.builder import post_vertical_builder
 from app.api import api
 from app.extensions import db
@@ -25,9 +25,9 @@ class FlightPlanDump(Resource):
 
         for fp in flightplans:
             if fp.builder_options is None:
-                result.append(marshal(fp, flightplan_no_builder))
+                result.append(marshal(fp, flightplan_complete))
             else:
-                result.append(marshal(fp, flightplan_with_builder))
+                result.append(marshal(fp, flightplan_complete_with_builder))
 
         return {'flightplans': result}
 
@@ -45,7 +45,7 @@ class FlightPlanCollection(Resource):
 
         return {'flightplans': flightplans}
 
-    @api.marshal_with(flightplan_no_builder, code=201, description='FlightPlan successfully created.')
+    @api.marshal_with(flightplan, code=201, description='FlightPlan successfully created.')
     @api.doc(responses={
         409: 'Value Exist',
         400: 'Validation Error'
@@ -88,9 +88,9 @@ class FlightPlanItem(Resource):
         """
         fp = FlightPlan.query.get_or_404(id)
         if fp.builder_options is None:
-            return marshal(fp, flightplan_no_builder)
+            return marshal(fp, flightplan_complete)
         else:
-            return marshal(fp, flightplan_with_builder)
+            return marshal(fp, flightplan_complete_with_builder)
 
     @api.response(204, 'FlightPlan successfully updated.')
     @api.doc(responses={
@@ -136,7 +136,7 @@ class FlightPlanItem(Resource):
 
 @ns.route('/build')
 class FlightBuilder(Resource):
-    @api.marshal_with(flightplan_with_builder)
+    @api.marshal_with(flightplan_builder_result)
     @api.expect(post_vertical_builder)
     def post(self):
         """

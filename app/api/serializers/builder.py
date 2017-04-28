@@ -1,7 +1,6 @@
 from flask_restplus import fields
 from app.api import api
 from app.api.serializers import minimal_gpscoord, gimbal
-from app.api.serializers.waypoint import minimal_waypoint
 
 vertical_builder_options = api.model('VerticalBuilderOptions', {
     'coord1' : fields.Nested(minimal_gpscoord, requird = True, description='GPS coord1'),
@@ -17,10 +16,4 @@ vertical_builder_options = api.model('VerticalBuilderOptions', {
 post_vertical_builder = api.inherit('VerticalBuilderParams', vertical_builder_options, {
     'flightplan_name' : fields.String(required = True, description = 'FlightPlan name'),
     'save' :fields.Boolean(required=False, description='Auto save the builded FlightPlan', default=False)
-})
-
-
-builder_output = api.model('BuilderOutput', {
-    'name' : fields.String(description = 'Flightplan name', min_length = 3, max_length = 64),
-    'waypoints' : fields.List(fields.Nested(minimal_waypoint), description = 'Waypoint list of Flighplan')
 })
