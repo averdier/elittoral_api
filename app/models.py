@@ -1121,6 +1121,8 @@ class FlightPlanBuilder(db.Model):
         alt_start = float(alt_start)
         if alt_start <= 0:
             raise ValueError('Parameter alt_start have to be upper 0')
+        if self.alt_end is not None and alt_start > self.alt_end:
+            raise ValueError('Parameter alt_start under or equal al_end')
         self.alt_start = alt_start
 
     def set_alt_end(self, alt_end):
@@ -1136,6 +1138,8 @@ class FlightPlanBuilder(db.Model):
         alt_end = float(alt_end)
         if alt_end <= 0:
             raise ValueError('Parameter alt_end have to be upper 0')
+        if self.alt_start is not None and alt_end < self.alt_start:
+            raise ValueError('Parameter alt_end have to be upper or equal alt_start')
         self.alt_end = alt_end
 
     def set_h_increment(self, h_increment):
