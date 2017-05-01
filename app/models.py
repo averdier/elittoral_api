@@ -1,6 +1,7 @@
 import os
 import math
 from datetime import datetime
+from flask_restplus import fields
 from config import UPLOAD_FOLDER, RESULT_FOLDER, THUMBNAIL_FOLDER
 from app.utils import is_float, is_int, is_string, is_valid_date, get_extention, allowed_file
 from app.exceptions import ValueExist
@@ -574,7 +575,7 @@ class FlightPlan(db.Model):
 
         created_on = args.get('created_on')
         if created_on is not None:
-            flightplan.created_on = created_on
+            flightplan.created_on = fields.datetime_from_iso8601(created_on)
 
         return flightplan
 
@@ -771,9 +772,7 @@ class Waypoint(db.Model):
 
         created_on = args.get('created_on')
         if created_on is not None:
-            if not is_valid_date(created_on, '%Y-%m-%d %H:%M:%S'):
-                raise ValueError('Invalid Waypoint created_on date format')
-            waypoint.created_on = datetime.strptime(created_on, '%Y-%m-%d %H:%M:%S')
+            waypoint.created_on = fields.datetime_from_iso8601(created_on)
 
         return waypoint
 
@@ -1312,7 +1311,7 @@ class Recon(db.Model):
 
         created_on = args.get('created_on')
         if created_on is not None:
-            recon.created_on = created_on
+            recon.created_on = fields.datetime_from_iso8601(created_on)
 
         return recon
 
@@ -1389,7 +1388,7 @@ class Resource(db.Model):
 
         created_on = args.get('created_on')
         if created_on is not None:
-            resource.created_on = created_on
+            resource.created_on = fields.date_from_iso8601(created_on)
 
         return resource
 
