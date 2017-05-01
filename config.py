@@ -21,4 +21,5 @@ RESTPLUS_ERROR_404_HELP = False
 # Content settings
 UPLOAD_FOLDER = os.path.join(basedir, 'upload')
 RESULT_FOLDER = os.path.join(basedir, 'result')
+THUMBNAIL_FOLDER = os.path.join(basedir, 'thumbnail')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}

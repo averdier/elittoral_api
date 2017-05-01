@@ -1,7 +1,7 @@
 import os
 import math
 from datetime import datetime
-from config import UPLOAD_FOLDER, RESULT_FOLDER
+from config import UPLOAD_FOLDER, RESULT_FOLDER, THUMBNAIL_FOLDER
 from app.utils import is_float, is_int, is_string, is_valid_date, get_extention, allowed_file
 from app.exceptions import ValueExist
 from app.extensions import db
@@ -1449,12 +1449,17 @@ class Resource(db.Model):
 
     def remove_content(self):
         """
-        Supprime le fichier de la ressource
+        Supprime le fichier de la ressource et la vignette si elle existe
         """
         if self.filename is not None:
             path = os.path.join(UPLOAD_FOLDER, self.filename)
             if os.path.exists(path):
                 os.remove(path)
+
+            thumbnail_path = os.path.join(THUMBNAIL_FOLDER, self.filename)
+            if os.path.exists(thumbnail_path):
+                os.remove(thumbnail_path)
+
             self.filename = None
             db.session.add(self)
             AppInformations.update()

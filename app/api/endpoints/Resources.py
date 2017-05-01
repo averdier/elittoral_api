@@ -1,5 +1,5 @@
 import os
-from config import UPLOAD_FOLDER
+from config import UPLOAD_FOLDER, THUMBNAIL_FOLDER
 from flask import request, send_from_directory
 from flask_restplus import abort
 from flask_restplus import Resource
@@ -88,10 +88,39 @@ class ResourceItem(Resource):
         return 'Resource successfully deleted.', 204
 
 
+@ns.route('/<int:id>/thumbnail')
+@api.response(404, 'Resource not found.')
+class ThumbnailResourceItem(Resource):
+    @api.doc(responses={
+        200: 'Success',
+        400: 'Resource have no thumbnail'
+    })
+    def get(self, id):
+        """
+        Get Resource content
+
+        200 Success
+        404 Resource not found
+        400 Resource have no thumbnail
+        :param id: Resoure unique Id
+        """
+
+        res = ReconResource.query.get_or_404(id)
+        if res.filename is None:
+            abort(400, error='Resource have no content')
+
+        path = os.path.join(THUMBNAIL_FOLDER, res.filename)
+
+        if not os.path.exists(path) or not os.path.isfile(path):
+            abort(400, error='Resource have no thumbnail')
+
+        return send_from_directory(THUMBNAIL_FOLDER, res.filename)
+
+
 @ns.route('/<int:id>/content')
 @api.response(404, 'Resource not found.')
 class ContentResourceItem(Resource):
-    @api.marshal_with(resource, code=201, description='Resource content successfully uploaded.')
+    @api.response(204, 'Resource content successfully uploaded.')
     @api.expect(upload_parser)
     def post(self, id):
         """
@@ -106,7 +135,11 @@ class ContentResourceItem(Resource):
         args = upload_parser.parse_args()
         try:
             res.set_content(args['file'])
-            return res
+
+            from app.tasks import task_build_thumbnail
+            task_build_thumbnail.delay(id)
+
+            return 'Resource content successfully uploaded.', 204
 
         except ValueExist as e:
             abort(409, error=str(e))
