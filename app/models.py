@@ -43,7 +43,7 @@ class GPSCoord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     lat = db.Column(db.Float, index=True)
     lon = db.Column(db.Float, index=True)
-    alt = db.Column(db.Float, index=True, default=1)
+    alt = db.Column(db.Float, index=True, default=0)
 
     @staticmethod
     def from_dict(args):
@@ -55,7 +55,7 @@ class GPSCoord(db.Model):
             {
                 'lat' : value, (required|float|min[-90]|max[90])
                 'lon' : value, (required|float|min[-180]|max[180])
-                'alt' : value  (optionnal|float|default[1])
+                'alt' : value  (optionnal|float|default[0])
             }
         :return: Coordonnee GPS
         :rtype: GPSCoord
@@ -519,6 +519,19 @@ class DroneParameters(db.Model):
             self.gimbal.update_from_dict(args)
         else:
             self.gimbal = Gimbal.from_dict(args)
+
+    def clone(self):
+        """
+        Clone current DroneParameters
+        
+        :return: Clone of current DroneParameters
+        """
+
+        return DroneParameters(
+            rotation = self.rotation,
+            coord = self.coord.clone(),
+            gimbal = self.gimbal.clone()
+        )
 
 
 class FlightPlan(db.Model):
