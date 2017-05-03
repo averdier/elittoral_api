@@ -3,7 +3,10 @@ from flask_restplus import abort, marshal
 from app.exceptions import ValueExist
 from flask_restplus import Resource
 from app.api.serializers.flightplan import flightplan, flightplan_complete_with_builder, flightplan_minimal, \
-    flightplan_put, flightplan_data_wrapper, flightplan_dump_data_wrapper, flightplan_complete, flightplan_builder_result
+    flightplan_put, flightplan_data_wrapper, flightplan_dump_data_wrapper, flightplan_complete, \
+    flightplan_builder_result
+
+from app.core.flightplan_builder import build_vertical_flightplan_from_args
 from app.api.serializers.builder import post_vertical_builder
 from app.api import api
 from app.extensions import db
@@ -34,7 +37,6 @@ class FlightPlanDump(Resource):
 
 @ns.route('/')
 class FlightPlanCollection(Resource):
-
     @api.marshal_with(flightplan_data_wrapper)
     def get(self):
         """
@@ -77,7 +79,6 @@ class FlightPlanCollection(Resource):
 @ns.route('/<int:id>')
 @api.response(404, 'Flightplan not found.')
 class FlightPlanItem(Resource):
-
     @api.response(200, 'Success', flightplan_complete)
     def get(self, id):
         """
@@ -150,7 +151,8 @@ class FlightBuilder(Resource):
             builder = FlightPlanBuilder.from_dict(request.json)
 
             fp_params = builder.build_vertical_flightplan()
-            fp = FlightPlan(name = fp_name, waypoints = fp_params['waypoints'], builder_options = fp_params['builder_options'])
+            fp = FlightPlan(name=fp_name, waypoints=fp_params['waypoints'],
+                            builder_options=fp_params['builder_options'])
             fp.update_informations()
 
             if request.json.get('save'):
@@ -161,3 +163,25 @@ class FlightBuilder(Resource):
             return fp
         except Exception as e:
             abort(400, error=str(e))
+
+
+@ns.route('/build_test')
+class FlightBuilder(Resource):
+    @api.marshal_with(flightplan_builder_result)
+    @api.expect(post_vertical_builder)
+    def post(self):
+        """
+        Build vertical FlightPlan
+        """
+
+        flightplan_path = build_vertical_flightplan_from_args(request.json)
+
+        fp = FlightPlan(name = 'De test', waypoints=flightplan_path)
+        db.session.add(fp)
+        db.session.commit()
+
+        fp.update_informations()
+        db.session.add(fp)
+        db.session.commit()
+
+        return fp

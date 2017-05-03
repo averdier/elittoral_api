@@ -209,6 +209,19 @@ class GPSCoord(db.Model):
         """
         return GPSCoord(lat=self.lat, lon=self.lon, alt=self.alt)
 
+    def __eq__(self, other):
+        """
+        Test equality
+        
+        :param other: A GPSCoord
+        :type other: GPSCoord
+        
+        :return: True if the coordinates have the same position
+        :rtype: bool
+        """
+
+        return self.lat == other.lat and self.lon == other.alt and self.alt == other.alt
+
 
 class Gimbal(db.Model):
     """
