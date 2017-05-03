@@ -1,6 +1,5 @@
 from app import create_celery_app
-from app.picture_engine import build_thumbnail
-from app.extensions import db
+from app.core.picture_engine import build_thumbnail
 from app.models import Resource
 
 

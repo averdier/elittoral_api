@@ -1,9 +1,10 @@
 import os
 import math
+from geopy.distance import vincenty
 from datetime import datetime
 from flask_restplus import fields
 from config import UPLOAD_FOLDER, RESULT_FOLDER, THUMBNAIL_FOLDER
-from app.utils import is_float, is_int, is_string, is_valid_date, get_extention, allowed_file
+from app.utils import is_float, is_int, is_string, get_extention, allowed_file
 from app.exceptions import ValueExist
 from app.extensions import db
 
@@ -111,6 +112,27 @@ class GPSCoord(db.Model):
         db.session.add(self)
         AppInformations.update()
 
+    def distance_to(self, coord):
+        """
+        Retourne la distance entre 2 coordonnees
+        
+        :param coord: Coordonnee GPS
+        :type coord: GPSCoord
+        :return: Distance
+        :rtype: float
+        """
+
+        return vincenty(
+            (
+                self.lat,
+                self.lon
+            ),
+            (
+                coord.lat,
+                coord.lon
+            )
+        )
+
     def pythagore_distance_to(self, coord):
         """
         Calcule la distance entre 2 coordonnees
@@ -139,8 +161,6 @@ class GPSCoord(db.Model):
         """
         if lat is None:
             raise ValueError('GPSCoord lat is required')
-        if not is_float(lat):
-            raise TypeError('GPSCoord lat have to be a float')
         lat = float(lat)
 
         if lat < -90 or lat > 90:
@@ -159,8 +179,6 @@ class GPSCoord(db.Model):
         """
         if lon is None:
             raise ValueError('GPSCoord lon is required')
-        if not is_float(lon):
-            raise TypeError('GPSCoord lon have to be a float')
         lon = float(lon)
 
         if lon < -180 or lon > 180:
@@ -179,9 +197,8 @@ class GPSCoord(db.Model):
         """
         if alt is None:
             raise ValueError('GPSCoord alt is required')
-        if not is_float(alt):
-            raise TypeError('GPSCoord alt have to be a float')
-        self.alt = float(alt)
+        alt = float(alt)
+        self.alt = alt
 
     def clone(self):
         """
@@ -293,8 +310,6 @@ class Gimbal(db.Model):
         """
         if yaw is None:
             raise ValueError('Gimbal yaw is required')
-        if not is_float(yaw):
-            raise TypeError('Gimbal yaw have to be a float')
         yaw = float(yaw)
         if yaw < -180 or yaw > 180:
             raise ValueError('Gimbal yaw have to be between -180 and 180')
@@ -312,8 +327,6 @@ class Gimbal(db.Model):
         """
         if pitch is None:
             raise ValueError('Gimbal pitch is required')
-        if not is_float(pitch):
-            raise TypeError('Gimbal pitch have to be a float')
         pitch = float(pitch)
         if pitch < -180 or pitch > 180:
             raise ValueError('Gimbal pitch have to be between -180 and 180')
@@ -331,8 +344,6 @@ class Gimbal(db.Model):
         """
         if roll is None:
             raise ValueError('Gimbal roll is required')
-        if not is_float(roll):
-            raise TypeError('Gimbal roll have to be a float')
         roll = float(roll)
         if roll < -180 or roll > 180:
             raise ValueError('Gimbal roll have to be between -180 and 180')
@@ -463,8 +474,6 @@ class DroneParameters(db.Model):
         """
         if rotation is None:
             raise ValueError('DroneParameters rotation is required')
-        if not is_float(rotation):
-            raise TypeError('DroneParameters rotation have to be a float')
         rotation = float(rotation)
 
         if rotation < -180 or rotation > 180:
@@ -541,8 +550,6 @@ class FlightPlan(db.Model):
         """
         if flightplan_id is None:
             raise ValueError('FlightPlan id is required')
-        if not is_int(flightplan_id):
-            raise TypeError('FlightPlan id have to be a int')
         flightplan_id = int(flightplan_id)
 
         if flightplan_id <= 0:
@@ -579,6 +586,7 @@ class FlightPlan(db.Model):
 
         return flightplan
 
+    # A revoir
     def update_from_dict(self, args):
         """
         Modifie le plan de vol a partir d'un dictionnaire
@@ -628,6 +636,7 @@ class FlightPlan(db.Model):
         if name is not None:
             self.__set_name(name)
 
+        # A Revoir pour sortir du modele, ne doit pas etre la
         if build_options is not None:
             builder = FlightPlanBuilder.from_dict(build_options)
             fp_params = builder.build_vertical_flightplan()
@@ -648,6 +657,7 @@ class FlightPlan(db.Model):
         AppInformations.update()
         db.session.commit()
 
+    # A revoir
     def update_informations(self):
         """
         Met a jour les informations du plan de vol tel que la distance
@@ -675,8 +685,6 @@ class FlightPlan(db.Model):
         """
         if name is None:
             raise ValueError('FlightPlan name is required')
-        if not is_string(name):
-            raise TypeError('FlightPlan name have to be a string')
         name = str(name)
 
         if len(name) < 3 or len(name) > 64:
@@ -836,8 +844,6 @@ class Waypoint(db.Model):
         """
         if number is None:
             raise ValueError('Waypoint number is required')
-        if not is_int(number):
-            raise TypeError('Waypoint number have to be a int')
         number = int(number)
 
         if number < 0 or number > 98:
@@ -896,6 +902,7 @@ class Waypoint(db.Model):
                         parameters=self.parameters)
 
 
+# A Revoir, pas ultra propre
 class FlightPlanBuilder(db.Model):
     """
     Classe representant un generateur de plan de vol
@@ -975,6 +982,7 @@ class FlightPlanBuilder(db.Model):
 
         return builder
 
+    # A revoir
     def __build_line_with_increment(self, coord1, coord2, increment, start_number, rotation, gimbal):
         """
         Retourne une liste de waypoint representant une ligne 
@@ -1040,6 +1048,7 @@ class FlightPlanBuilder(db.Model):
                                                           gimbal=gimbal.clone())))
         return result
 
+    # A revoir
     def build_vertical_flightplan(self):
         """
         Retourne un plan de vol vertical a partir des parametres
