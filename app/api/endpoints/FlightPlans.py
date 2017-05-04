@@ -113,6 +113,17 @@ class FlightPlanItem(Resource):
         try:
             fp.update_from_dict(request.json)
 
+            if request.json.get('builder_options') is not None:
+
+                builder_options = FlightPlanBuilder.from_dict(request.json.get('builder_options'))
+                flightplan_path = build_vertical_flightplan_from_options(builder_options)
+
+                fp.delete_waypoints()
+                fp.waypoints = flightplan_path
+                fp.update_informations()
+                db.session.add(fp)
+                db.session.commit()
+
             return 'FlightPlan successfully updated.', 204
 
         except ValueExist as e:
@@ -136,36 +147,6 @@ class FlightPlanItem(Resource):
 
 
 @ns.route('/build')
-class FlightBuilder(Resource):
-    @api.marshal_with(flightplan_builder_result)
-    @api.expect(post_vertical_builder)
-    def post(self):
-        """
-        Build vertical FlightPlan
-        """
-        try:
-            fp_name = request.json.get('flightplan_name')
-            if FlightPlan.query.filter_by(name=fp_name).first() is not None:
-                abort(409, error='FlightPlan name already exist')
-
-            builder = FlightPlanBuilder.from_dict(request.json)
-
-            fp_params = builder.build_vertical_flightplan()
-            fp = FlightPlan(name=fp_name, waypoints=fp_params['waypoints'],
-                            builder_options=fp_params['builder_options'])
-            fp.update_informations()
-
-            if request.json.get('save'):
-                db.session.add(fp)
-                AppInformations.update()
-                db.session.commit()
-
-            return fp
-        except Exception as e:
-            abort(400, error=str(e))
-
-
-@ns.route('/build_test')
 class FlightBuilder(Resource):
     @api.marshal_with(flightplan_builder_result)
     @api.expect(post_vertical_builder)

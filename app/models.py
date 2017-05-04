@@ -541,9 +541,9 @@ class DroneParameters(db.Model):
         """
 
         return DroneParameters(
-            rotation = self.rotation,
-            coord = self.coord.clone(),
-            gimbal = self.gimbal.clone()
+            rotation=self.rotation,
+            coord=self.coord.clone(),
+            gimbal=self.gimbal.clone()
         )
 
 
@@ -621,30 +621,6 @@ class FlightPlan(db.Model):
         :type args: dict
             {
                 'name'  : value, (optional|string|unique|min_size[3]|max_size[64])
-                'builder_options'  (optional only used if present)
-                {
-                    'coord1'          :        (required)
-                        {
-                            'lat' : value, (required|float|min[-90]|max[90])
-                            'lon' : value (required|float|min[-180]|max[180])
-                        },
-                    'coord2'          :        (required)
-                        {
-                            'lat' : value, (required|float|min[-90]|max[90])
-                            'lon' : value (required|float|min[-180]|max[180])
-                        },
-                    'alt_start'      : value, (required|float|min[>0|default[1])
-                    'alt_end'        : value, (required|float|min[>0])
-                    'h_increment'    : value, (required|float|min[>0)
-                    'v_increment'    : value, (required|float|min[>0)
-                    'r_otation'      : value, (optional|int|min[-180]|max[180]|default[0])
-                    'd_gimbal'       :        (optional, else need minimum 1 value)
-                        {
-                            'yaw'   : value, (optionnal|float|min[-180]|max[180]|default[0])
-                            'pitch' : value, (optionnal|float|min[-180]|max[180]|default[90])
-                            'roll'  : value  (optionnal|float|min[-180]|max[180]|default[0])
-                        }
-                }
             }
 
         :raise ValueError: Si dict == None ou si erreur de validation du contenu
@@ -654,36 +630,14 @@ class FlightPlan(db.Model):
             raise ValueError('FlightPlan args required')
 
         name = args.get('name')
-        build_options = args.get('builder_options')
-
-        if name is None and build_options is None:
-            raise ValueError('No data found in FlightPlan args')
 
         if name is not None:
             self.__set_name(name)
-
-        # A Revoir pour sortir du modele, ne doit pas etre la
-        if build_options is not None:
-            builder = FlightPlanBuilder.from_dict(build_options)
-            fp_params = builder.build_vertical_flightplan()
-
-            if self.waypoints.count() > 0:
-                for waypoint in self.waypoints.all():
-                    waypoint.deep_delete()
-
-                self.delete_builder_options()
-                db.session.commit()
-
-                self.waypoints = fp_params['waypoints']
-                self.builder_options = builder
-
-                self.update_informations()
 
         db.session.add(self)
         AppInformations.update()
         db.session.commit()
 
-    # A revoir
     def update_informations(self):
         """
         Met a jour les informations du plan de vol tel que la distance
@@ -721,6 +675,16 @@ class FlightPlan(db.Model):
             raise ValueError('FlightPlan name already exist')
 
         self.name = name
+
+    def delete_waypoints(self):
+        """
+        Delete all waypoints in flightplan
+        """
+        if self.waypoints.count() > 0:
+            for waypoint in self.waypoints.all():
+                waypoint.deep_delete()
+            self.delete_builder_options()
+            db.session.commit()
 
     def delete_builder_options(self):
         """
@@ -928,7 +892,6 @@ class Waypoint(db.Model):
                         parameters=self.parameters)
 
 
-# A Revoir, pas ultra propre
 class FlightPlanBuilder(db.Model):
     """
     Classe representant un generateur de plan de vol
@@ -1008,140 +971,6 @@ class FlightPlanBuilder(db.Model):
 
         return builder
 
-    # A revoir
-    def __build_line_with_increment(self, coord1, coord2, increment, start_number, rotation, gimbal):
-        """
-        Retourne une liste de waypoint representant une ligne 
-
-        :param coord1: Coordonnee 1
-        :type coord1: GPSCoord
-
-        :param coord2: Coordonnee 2
-        :type coord2: GPSCoord
-
-        :param increment: Increment (m)
-        :type increment: float
-
-        :param start_number: Numero de depart pour la numerotation des waypoints
-        :type start_number: int
-
-        :param rotation: Rotation du drone
-        :type rotation: float
-
-        :param gimbal: Parametres du gimbal du drone
-        :type gimbal: Gimbal
-
-        :return: Liste des waypoints representant la ligne
-        :rtype: list<Waypoint>
-        """
-
-        current_number = start_number
-
-        result = [Waypoint(number=current_number,
-                           parameters=DroneParameters(coord=coord1.clone(),
-                                                      rotation=rotation,
-                                                      gimbal=gimbal.clone()))]
-        current_number += 1
-
-        distance = coord1.pythagore_distance_to(coord2) * 1000  # Car increment en metres
-        nb_it = int(distance / increment)
-
-        for i in range(1, nb_it):
-            if current_number > 97:
-                break
-
-            last_waypoint = result[len(result) - 1]
-
-            coord = last_waypoint.parameters.coord
-            distance = coord.pythagore_distance_to(coord2) * 1000
-            coef_direct = increment / distance
-
-            dx = coord.lon + coef_direct * (coord2.lon - coord.lon)
-            dy = coord.lat + coef_direct * (coord2.lat - coord.lat)
-            dz = coord.alt + coef_direct * (coord2.alt - coord.alt)
-
-            new_coord = GPSCoord(lat=dy, lon=dx, alt=dz)
-
-            result.append(Waypoint(number=current_number,
-                                   parameters=DroneParameters(coord=new_coord,
-                                                              rotation=rotation,
-                                                              gimbal=gimbal.clone())))
-            current_number += 1
-
-        result.append(Waypoint(number=current_number,
-                               parameters=DroneParameters(coord=coord2.clone(),
-                                                          rotation=rotation,
-                                                          gimbal=gimbal.clone())))
-        return result
-
-    # A revoir
-    def build_vertical_flightplan(self):
-        """
-        Retourne un plan de vol vertical a partir des parametres
-        
-        :return: Plan de vol
-        :rtype: FlightPlan
-        """
-
-        way_result = []
-        current_number = 0
-        alt_current = self.alt_start
-
-        self.coord1.alt = alt_current
-        self.coord2.alt = alt_current
-
-        line = self.__build_line_with_increment(self.coord1, self.coord2, self.h_increment, current_number,
-                                                self.d_rotation, self.d_gimbal)
-        way_result.append(line)
-
-        current_number = len(line)
-        alt_current += self.v_increment
-        reverse = True
-
-        while current_number < 99 and alt_current <= self.alt_end:
-            last_line = way_result[len(way_result) - 1]
-            new_line = []
-
-            # Liste des position a parcourir, dans un sens ou dans l'autre
-            pos = []
-            if reverse:
-                reverse = False
-                i = len(last_line) - 1
-                while i >= 0:
-                    pos.append(i)
-                    i -= 1
-            else:
-                reverse = True
-                for i in range(0, len(last_line)):
-                    pos.append(i)
-
-            # Parcourir toute les position
-            for i in range(0, len(pos)):
-                if current_number > 98:
-                    break
-                prev_waypoint = last_line[pos[i]]
-                new_coord = GPSCoord(lat=prev_waypoint.parameters.coord.lat,
-                                     lon=prev_waypoint.parameters.coord.lon,
-                                     alt=alt_current)
-
-                new_waypoint = Waypoint(number=current_number,
-                                        parameters=DroneParameters(coord=new_coord,
-                                                                   rotation=prev_waypoint.parameters.rotation,
-                                                                   gimbal=prev_waypoint.parameters.gimbal.clone()))
-                new_line.append(new_waypoint)
-                current_number += 1
-
-            way_result.append(new_line)
-            alt_current += self.v_increment
-
-        # Applatir les lignes
-        waypoint_list = []
-        for i in range(0, len(way_result)):
-            for j in range(0, len(way_result[i])):
-                waypoint_list.append(way_result[i][j])
-
-        return {'waypoints' : waypoint_list, 'builder_options' : self}
-
     def set_alt_start(self, alt_start):
         """
         Definie l'altitude de depart
@@ -1153,10 +982,7 @@ class FlightPlanBuilder(db.Model):
         if alt_start is None:
             raise ValueError('Parameter alt_start is required')
         alt_start = float(alt_start)
-        if alt_start <= 0:
-            raise ValueError('Parameter alt_start have to be upper 0')
-        if self.alt_end is not None and alt_start > self.alt_end:
-            raise ValueError('Parameter alt_start under or equal al_end')
+
         self.alt_start = alt_start
 
     def set_alt_end(self, alt_end):
@@ -1170,10 +996,7 @@ class FlightPlanBuilder(db.Model):
         if alt_end is None:
             raise ValueError('Parameter alt_end is required')
         alt_end = float(alt_end)
-        if alt_end <= 0:
-            raise ValueError('Parameter alt_end have to be upper 0')
-        if self.alt_start is not None and alt_end < self.alt_start:
-            raise ValueError('Parameter alt_end have to be upper or equal alt_start')
+
         self.alt_end = alt_end
 
     def set_h_increment(self, h_increment):
@@ -1186,9 +1009,7 @@ class FlightPlanBuilder(db.Model):
 
         if h_increment is None:
             raise ValueError('Parameter h_increment is required')
-        h_increment = float(h_increment)
-        if h_increment <= 0:
-            raise ValueError('Parameter h_increment have to be upper 0')
+
         self.h_increment = h_increment
 
     def set_v_increment(self, v_increment):
@@ -1201,9 +1022,7 @@ class FlightPlanBuilder(db.Model):
 
         if v_increment is None:
             raise ValueError('Parameter v_increment is required')
-        v_increment = float(v_increment)
-        if v_increment <= 0:
-            raise ValueError('Parameter v_increment have to be upper 0')
+
         self.v_increment = v_increment
 
     def set_d_rotation(self, d_rotation):
@@ -1216,9 +1035,7 @@ class FlightPlanBuilder(db.Model):
 
         if d_rotation is None:
             raise ValueError('Parameter d_rotation is required')
-        d_rotation = float(d_rotation)
-        if d_rotation < -180 or d_rotation > 180:
-            raise ValueError('Parameter d_rotation have to be between -180 and 180')
+
         self.d_rotation = d_rotation
 
     def set_d_gimbal(self, args):
