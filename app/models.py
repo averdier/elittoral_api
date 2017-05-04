@@ -562,9 +562,6 @@ class FlightPlan(db.Model):
     builder_options_id = db.Column(db.Integer, db.ForeignKey('builder_options.id'))
     builder_options = db.relationship('FlightPlanBuilder')
 
-    bounding_box_id = db.Column(db.Integer, db.ForeignKey('bounding_box.id'))
-    bounding_box = db.relationship('BasicGeoBoundingBox')
-
     @staticmethod
     def get_from_id(flightplan_id):
         """
