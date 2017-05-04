@@ -557,8 +557,12 @@ class FlightPlan(db.Model):
     updated_on = db.Column(db.DateTime, onupdate=datetime.utcnow)
     name = db.Column(db.String(64), unique=True)
     distance = db.Column(db.Float, default=0.0)
+
     builder_options_id = db.Column(db.Integer, db.ForeignKey('builder_options.id'))
     builder_options = db.relationship('FlightPlanBuilder')
+
+    bounding_box_id = db.Column(db.Integer, db.ForeignKey('bounding_box.id'))
+    bounding_box = db.relationship('BasicGeoBoundingBox')
 
     @staticmethod
     def get_from_id(flightplan_id):
@@ -612,7 +616,6 @@ class FlightPlan(db.Model):
 
         return flightplan
 
-    # A revoir
     def update_from_dict(self, args):
         """
         Modifie le plan de vol a partir d'un dictionnaire
