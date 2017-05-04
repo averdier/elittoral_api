@@ -10,7 +10,7 @@ from app.core.flightplan_builder import build_vertical_flightplan_from_options
 from app.api.serializers.builder import post_vertical_builder
 from app.api import api
 from app.extensions import db
-from app.models import FlightPlan, FlightPlanBuilder, AppInformations, BasicGeoBoundingBox
+from app.models import FlightPlan, FlightPlanBuilder, AppInformations
 
 ns = api.namespace('flightplans', description='Operations related to flightplans.')
 
@@ -122,6 +122,7 @@ class FlightPlanItem(Resource):
                 fp.waypoints = flightplan_path
                 fp.builder_options = builder_options
                 fp.update_informations()
+                fp.builded = True
 
                 db.session.add(fp)
                 db.session.commit()

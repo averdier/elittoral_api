@@ -555,6 +555,7 @@ class FlightPlan(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     created_on = db.Column(db.DateTime, default=datetime.utcnow)
     updated_on = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    builded = db.Column(db.Boolean, default=False)
     name = db.Column(db.String(64), unique=True)
     distance = db.Column(db.Float, default=0.0)
 
