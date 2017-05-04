@@ -1,4 +1,5 @@
-from app.models import GPSCoord, Gimbal, Waypoint, DroneParameters
+from config import MAX_WAYPOINT
+from app.models import GPSCoord, Gimbal, Waypoint, DroneParameters, FlightPlanBuilder
 
 
 def build_line_with_increment(coord1, coord2, increment, max_point, altitude=0):
@@ -32,7 +33,9 @@ def build_line_with_increment(coord1, coord2, increment, max_point, altitude=0):
 
     increment = float(increment)
 
-    result = [coord1.clone()]
+    start_coord = coord1.clone()
+    start_coord.alt = altitude
+    result = [start_coord]
 
     distance = coord1.distance_to(coord2).meters
 
@@ -53,7 +56,9 @@ def build_line_with_increment(coord1, coord2, increment, max_point, altitude=0):
 
         result.append(new_coord)
 
-    result.append(coord2.clone())
+    end_coord = coord2.clone()
+    end_coord.alt = altitude
+    result.append(end_coord)
 
     return result
 
@@ -161,7 +166,6 @@ def build_vertical_path_with_increments(coord1, coord2, horizontal_increment, ve
 
     base_line = build_line_with_increment(coord1, coord2, horizontal_increment, max_point, start_alt)
 
-    print(len(base_line))
     result = []
     result.extend(base_line)
 
@@ -229,8 +233,29 @@ def build_vertical_flightplan(coord1, coord2, horizontal_increment, vertical_inc
 
     return flightplan_path
 
-# Pour tests
-def build_vertical_flightplan_from_args(args):
-    return build_vertical_flightplan(GPSCoord.from_dict(args['coord1']), GPSCoord.from_dict(args['coord2']),
-                                     args['h_increment'], args['v_increment'],args['alt_start'],
-                                     args['alt_end'], 99, args['d_rotation'], Gimbal())
+
+def build_vertical_flightplan_from_options(builder_options):
+    """
+    Build a vertical flightplan from args (json request)
+    
+    :param builder_options: Builder options
+    :type builder_options: FlightPlanBuilder
+    
+    :return: Path du plan de vol
+    :rtype: list[Waypoint]
+    """
+
+    if not isinstance(builder_options, FlightPlanBuilder):
+        raise ValueError('Parameter builder_options have to be a FlightPlanBuilder')
+
+    return build_vertical_flightplan(
+        builder_options.coord1,
+        builder_options.coord2,
+        builder_options.h_increment,
+        builder_options.v_increment,
+        builder_options.alt_start,
+        builder_options.alt_end,
+        MAX_WAYPOINT,
+        builder_options.d_rotation,
+        builder_options.d_gimbal
+    )

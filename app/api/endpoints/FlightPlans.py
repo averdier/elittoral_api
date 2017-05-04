@@ -6,7 +6,7 @@ from app.api.serializers.flightplan import flightplan, flightplan_complete_with_
     flightplan_put, flightplan_data_wrapper, flightplan_dump_data_wrapper, flightplan_complete, \
     flightplan_builder_result
 
-from app.core.flightplan_builder import build_vertical_flightplan_from_args
+from app.core.flightplan_builder import build_vertical_flightplan_from_options
 from app.api.serializers.builder import post_vertical_builder
 from app.api import api
 from app.extensions import db
@@ -174,14 +174,28 @@ class FlightBuilder(Resource):
         Build vertical FlightPlan
         """
 
-        flightplan_path = build_vertical_flightplan_from_args(request.json)
+        try:
+            fp_name = request.json.get('flightplan_name')
+            if FlightPlan.query.filter_by(name=fp_name).first() is not None:
+                abort(409, error='FlightPlan name already exist')
 
-        fp = FlightPlan(name = 'De test', waypoints=flightplan_path)
-        db.session.add(fp)
-        db.session.commit()
+            builder = FlightPlanBuilder.from_dict(request.json)
 
-        fp.update_informations()
-        db.session.add(fp)
-        db.session.commit()
+            flightplan_path = build_vertical_flightplan_from_options(builder)
 
-        return fp
+            fp = FlightPlan(
+                name=fp_name,
+                waypoints=flightplan_path,
+                builder_options=builder
+            )
+
+            fp.update_informations()
+
+            if request.json.get('save'):
+                db.session.add(fp)
+                AppInformations.update()
+                db.session.commit()
+
+            return fp
+        except Exception as e:
+            abort(400, error=str(e))

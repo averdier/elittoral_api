@@ -690,10 +690,10 @@ class FlightPlan(db.Model):
         """
         distance = 0.0
         for i in range(1, self.waypoints.count()):
-            d = self.waypoints[i].parameters.coord.pythagore_distance_to(self.waypoints[i - 1].parameters.coord)
+            d = self.waypoints[i].parameters.coord.distance_to(self.waypoints[i - 1].parameters.coord).meters
             if d == 0:
                 distance += (self.waypoints[i].parameters.coord.alt - self.waypoints[
-                    i - 1].parameters.coord.alt) / 1000  # Car en metres
+                    i - 1].parameters.coord.alt)
             else:
                 distance += d
         self.distance = distance
