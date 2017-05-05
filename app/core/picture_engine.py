@@ -65,7 +65,7 @@ def resource_subtraction(diminuend, subtrahend):
     subtrahend_img = cv2.imread(subtrahend.get_content_path())
 
     substractor = cv2.createBackgroundSubtractorMOG2()
-    mask = substractor.apply(diminuend_img)
+    substractor.apply(diminuend_img)
     mask = substractor.apply(subtrahend_img)
 
     filename = get_name_without_extentsion(diminuend.filename) + '_SUB_' + get_name_without_extentsion(
@@ -76,3 +76,15 @@ def resource_subtraction(diminuend, subtrahend):
     return filename
 
 
+def picture_black_percentage(picture_filename):
+    """
+    Get percentage of black color in a picture
+    
+    :param picture_filename: picture filename
+    :type picture_filename: str
+    
+    :return: Percentage of black color
+    :rtype: float
+    """
+
+    pass

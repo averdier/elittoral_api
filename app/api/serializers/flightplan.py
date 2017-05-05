@@ -17,6 +17,7 @@ flightplan_put = api.model('FlightPlan Put', {
 flightplan = api.inherit('FlightPlan', flightplan_minimal, {
     'id' : fields.Integer(required = True, description="FlightPlan unique ID"),
     'updated_on' : fields.DateTime(dt_format='iso8601', required = False, description = 'DateTime of last FlightPlan update (iso8601)'),
+    'builded':fields.Boolean(required=False, description='Indicate if the FlightPlan is builded'),
     'waypoints_count' : fields.Integer(attribute=lambda x: x.waypoints.count()),
     'recons_count' : fields.Integer(attribute=lambda x: x.recons.count()),
     'distance' : fields.Float(required = False, description = 'FlightPlan distance (km)'),
