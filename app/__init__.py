@@ -47,7 +47,7 @@ def create_app():
     extensions(app)
 
     with app.app_context():
-        from app.models import FlightPlan, Waypoint, DroneParameters, Gimbal, GPSCoord, FlightPlanBuilder, Resource, Recon, AppInformations
+        from app.models import FlightPlan, Waypoint, DroneParameters, Gimbal, GPSCoord, FlightPlanBuilder, Resource, Recon, AppInformations, Analysis, AnalysisResult
         #db.drop_all()
         db.create_all()
 

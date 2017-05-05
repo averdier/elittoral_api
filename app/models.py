@@ -1374,3 +1374,128 @@ class Resource(db.Model):
         self.remove_content()
         db.session.delete(self)
         AppInformations.update()
+
+
+class Analysis(db.Model):
+    """
+    Class that represent analysis between two recons
+    """
+    __tablename__ = 'analysis'
+    id = db.Column(db.Integer, primary_key=True)
+    created_on = db.Column(db.DateTime, default=datetime.utcnow)
+    state = db.Column(db.String(32), default='pending')
+    total = db.Column(db.Integer)
+    current = db.Column(db.Integer)
+    message = db.Column(db.String(64))
+    result = db.Column(db.Float)
+
+    minuend_recon_id = db.Column(db.Integer, db.ForeignKey('recon.id'))
+    subtrahend_recon_id = db.Column(db.Integer, db.ForeignKey('recon.id'))
+
+    minuend_recon = db.relationship('Recon', foreign_keys=minuend_recon_id,
+                                    backref=db.backref('analyzes', lazy='dynamic'))
+
+    subtrahend_recon = db.relationship('Recon', foreign_keys=subtrahend_recon_id)
+
+    @staticmethod
+    def get_from_id(analysis_id):
+        """
+        Get a analysis from unique id
+        
+        :param analysis_id: Analysis unique id
+        :type analysis_id: int
+        
+        :return: Analysis
+        :rtype: Analysis|None
+        """
+
+        if analysis_id is None:
+            raise ValueError('Parameter analysis_id is required')
+        analysis_id = int(analysis_id)
+
+        if analysis_id <= 0:
+            raise ValueError('Parameter analysis_id have to be positive')
+
+        return Analysis.query.filter_by(id=analysis_id).first()
+
+    @staticmethod
+    def from_dict(args):
+        """
+        Create a Analysis from dict
+        
+        :param args: dict that represent the parameters
+        :type args: dict
+            {
+                'minuend_recon_id     : value, (required|int|exist[recon.id])
+                'subtrahend_recon_id' : value  (required|int|exist[recon.id])
+            }
+        
+        :return: Analysis
+        :rtype: Analysis
+        """
+
+        if args is None:
+            raise ValueError('Parameter args is required')
+        analysis = Analysis()
+
+        minuend = Recon.get_from_id(args.get('minuend_recon_id'))
+        subtrahend = Recon.get_from_id(args.get('subtrahend_recon_id'))
+
+        if minuend is None:
+            raise ValueError('Recon #' + str(args.get('minuend_recon_id')) + ' not found')
+        if subtrahend is None:
+            raise ValueError('Recon #' + str(args.get('subtrahend_recon_id')) + ' not found')
+
+        if Analysis.query.filter_by(minuend_recon_id=minuend.id, subtrahend_recon_id=subtrahend.id).first() is not None:
+            raise ValueExist('Analysis for this recons already exist')
+
+        analysis.minuend_recon_id = minuend.id
+        analysis.minuend_recon = minuend
+
+        analysis.subtrahend_recon_id = subtrahend.id
+        analysis.subtrahend_recon = subtrahend
+
+        return analysis
+
+    def deep_delete(self):
+        """
+        Delete the analysis and the results
+        """
+        for result in self.results.all():
+            result.deep_delete()
+        db.session.delete(self)
+
+
+class AnalysisResult(db.Model):
+    """
+    Class that represent the result of analysis between two resources
+    """
+    __tablename__ = 'analysis_result'
+    id = db.Column(db.Integer, primary_key=True)
+    created_on = db.Column(db.DateTime, default=datetime.utcnow)
+    analysis_id = db.Column(db.Integer, db.ForeignKey('analysis.id'))
+    filename = db.Column(db.String(64), unique=True)
+    result = db.Column(db.Float)
+
+    minuend_resource_id = db.Column(db.Integer, db.ForeignKey('resource.id'))
+    subtrahend_resource_id = db.Column(db.Integer, db.ForeignKey('resource.id'))
+
+    analysis = db.relationship('Analysis', backref=db.backref('results', lazy='dynamic'))
+
+    minuend_resource = db.relationship('Resource', foreign_keys=minuend_resource_id,
+                                       backref=db.backref('results', lazy='dynamic'))
+
+    subtrahend_resource = db.relationship('Resource', foreign_keys=subtrahend_resource_id)
+
+    def deep_delete(self):
+        """
+        Delete the analysis result and the file
+        """
+        if self.filename is not None:
+            path = os.path.join(RESULT_FOLDER, self.filename)
+            if os.path.exists(path):
+                os.remove(path)
+            self.filename = None
+        db.session.delete(self)
+
+
