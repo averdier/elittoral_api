@@ -19,8 +19,8 @@ analysis_result_with_resources = api.inherit('AnalysisResut WithResources', anal
 })
 
 analysis_post = api.model('Analysis POST', {
-    'minuend_resource_id': fields.Integer(required=True, description='Minuend resource unique Id'),
-    'subtrahend_resource_id': fields.Integer(required=True, description='Subtrahend resource unique Id')
+    'minuend_recon_id': fields.Integer(required=True, description='Minuend resource unique Id'),
+    'subtrahend_recon_id': fields.Integer(required=True, description='Subtrahend resource unique Id')
 })
 
 analysis_base = api.model('Analysis', {
