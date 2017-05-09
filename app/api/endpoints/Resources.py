@@ -8,7 +8,7 @@ from app.api.parsers import upload_parser, recon_parser
 from app.api.serializers.resource import resource_post, resource_data_wrapper, resource
 from app.api import api
 from app.extensions import db
-from app.models import AppInformations, Resource as ReconResource
+from app.models import AppInformations, ReconResource
 
 ns = api.namespace('resources', description='Operations related to resources.')
 

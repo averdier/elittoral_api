@@ -1,6 +1,6 @@
 from app import create_celery_app
 from app.core.picture_engine import build_thumbnail, resource_subtraction
-from app.models import Resource, Analysis, AnalysisResult
+from app.models import ReconResource, Analysis, AnalysisResult
 from app.extensions import db
 
 celery = create_celery_app()
@@ -15,7 +15,7 @@ def task_build_thumbnail(resource_id):
     :type resource_id: int
     """
 
-    resource = Resource.query.filter_by(id=resource_id).first()
+    resource = ReconResource.query.filter_by(id=resource_id).first()
 
     if resource is None:
         raise ValueError('Resource #' + str(resource_id) + ' not found')

@@ -82,7 +82,7 @@ class AnalysisItem(Resource):
         return 'Analysis successfully deleted.', 204
 
 
-@ns.route('result/<int:id>')
+@ns.route('/result/<int:id>')
 @api.response(404, 'AnalysisResult not found.')
 class AnalysisResultItem(Resource):
     @api.marshal_with(analysis_result_with_resources)
@@ -99,7 +99,7 @@ class AnalysisResultItem(Resource):
         return res
 
 
-@ns.route('result/<int:id>/content')
+@ns.route('/result/<int:id>/content')
 @api.response(404, 'AnalysisResult not found.')
 class ContentAnalysisResultItem(Resource):
 

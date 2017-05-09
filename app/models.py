@@ -4,7 +4,7 @@ from geopy.distance import vincenty
 from datetime import datetime
 from flask_restplus import fields
 from config import UPLOAD_FOLDER, RESULT_FOLDER, THUMBNAIL_FOLDER
-from app.utils import is_float, is_int, is_string, get_extention, allowed_file
+from app.utils import get_extention, allowed_file
 from app.exceptions import ValueExist
 from app.extensions import db
 
@@ -549,7 +549,7 @@ class DroneParameters(db.Model):
 
 class FlightPlan(db.Model):
     """
-    Classe representnant un plan de vol
+    Class that represent a flight plan
     """
     __tablename__ = 'flightplan'
     id = db.Column(db.Integer, primary_key=True)
@@ -709,7 +709,7 @@ class FlightPlan(db.Model):
 
 class Waypoint(db.Model):
     """
-    Classe representant un point de passage
+    Class that represent a waypoint in a flight plan
     """
     __tablename__ = 'waypoint'
     id = db.Column(db.Integer, primary_key=True)
@@ -1178,7 +1178,7 @@ class Recon(db.Model):
         AppInformations.update()
 
 
-class Resource(db.Model):
+class ReconResource(db.Model):
     """
     Classe representant une ressource d'un reconnaissance
     """
@@ -1220,7 +1220,7 @@ class Resource(db.Model):
                 }
             }
         :return: Ressource
-        :rtype: Resource
+        :rtype: ReconResource
 
         :raise ValueError: Si dict == None ou si erreur de validation du contenu
         :raise TypeError: Si erreur de validation du contenu
@@ -1228,7 +1228,7 @@ class Resource(db.Model):
         if args is None:
             raise ValueError('args required')
 
-        resource = Resource()
+        resource = ReconResource()
 
         recon = Recon.get_from_id(args.get('recon_id'))
         if recon is None:
@@ -1334,7 +1334,7 @@ class Resource(db.Model):
         if number < 0 or number > 99:
             raise ValueError('Parameter number have to be between 0 and 99')
 
-        if Resource.query.filter_by(recon_id=self.recon_id, number=number).first() is not None:
+        if ReconResource.query.filter_by(recon_id=self.recon_id, number=number).first() is not None:
             raise ValueExist('Resource #' + str(number) + ' already exist')
         self.number = number
 
@@ -1482,10 +1482,10 @@ class AnalysisResult(db.Model):
 
     analysis = db.relationship('Analysis', backref=db.backref('results', lazy='dynamic'))
 
-    minuend_resource = db.relationship('Resource', foreign_keys=minuend_resource_id,
+    minuend_resource = db.relationship('ReconResource', foreign_keys=minuend_resource_id,
                                        backref=db.backref('results', lazy='dynamic'))
 
-    subtrahend_resource = db.relationship('Resource', foreign_keys=subtrahend_resource_id)
+    subtrahend_resource = db.relationship('ReconResource', foreign_keys=subtrahend_resource_id)
 
     def deep_delete(self):
         """

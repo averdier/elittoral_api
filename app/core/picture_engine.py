@@ -4,7 +4,7 @@ import cv2
 from config import THUMBNAIL_FOLDER, RESULT_FOLDER
 from app.utils import get_name_without_extentsion
 from app.extensions import db
-from app.models import Resource
+from app.models import ReconResource
 
 
 def build_thumbnail(resource):
@@ -12,10 +12,10 @@ def build_thumbnail(resource):
     Cree la vignette de la resource
     
     :param resource: Ressource a traiter
-    :type resource: Resource
+    :type resource: ReconResource
     """
 
-    if not isinstance(resource, Resource):
+    if not isinstance(resource, ReconResource):
         raise ValueError('Parameter resource have to be a Resource')
 
     resource_path = resource.get_content_path()
@@ -38,17 +38,17 @@ def resource_subtraction(diminuend, subtrahend):
     Subtract two resources
     
     :param diminuend: Diminuend resource
-    :type diminuend: Resource
+    :type diminuend: ReconResource
     
     :param subtrahend: Subtrahend resource
-    :type subtrahend: Resource
+    :type subtrahend: ReconResource
     
     :return: Result filename
     :rtype: str
     """
-    if not isinstance(diminuend, Resource):
+    if not isinstance(diminuend, ReconResource):
         raise Exception('Parameter diminuend have to be a Resource')
-    if not isinstance(subtrahend, Resource):
+    if not isinstance(subtrahend, ReconResource):
         raise Exception('Parameter subtrahend have to be a Resource')
 
     if diminuend.filename is None:
