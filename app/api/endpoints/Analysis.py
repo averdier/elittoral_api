@@ -1,13 +1,11 @@
-import os
-from config import UPLOAD_FOLDER, RESULT_FOLDER
-from flask import request, send_from_directory
+from flask import request
 from flask_restplus import abort
 from flask_restplus import Resource
-from app.api.serializers.analysis import analysis_data_container, analysis_with_recon, analysis_with_result, analysis_result_with_resources, \
+from app.api.serializers.analysis import analysis_data_container, analysis_with_recon, analysis_with_result, \
     analysis_post
 from app.api import api
 from app.extensions import db
-from app.models import AppInformations, Analysis, AnalysisResult
+from app.models import AppInformations, Analysis
 
 ns = api.namespace('analysis', description='Operations related to analysis.')
 
@@ -37,15 +35,16 @@ class AnalysisCollection(Resource):
         400 Validation error
         :return: 
         """
-        from app.tasks import run_analysis
+        from app.tasks import new_analysis
         try:
-            new_analysis = Analysis.from_dict(request.json)
-            db.session.add(new_analysis)
+            task = Analysis.from_dict(request.json)
+            db.session.add(task)
+            AppInformations.update()
             db.session.commit()
 
-            run_analysis.delay(new_analysis.id)
+            new_analysis.delay(task.id)
 
-            return new_analysis, 201
+            return task, 201
 
         except Exception as e:
             abort(400, error=str(e))

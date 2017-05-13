@@ -7,6 +7,43 @@ from app.extensions import db
 from app.models import ReconResource
 
 
+def open_resource_content(resource):
+    """
+    Open resource content with opencv
+    
+    :param resource: Resource
+    :type: ReconResource
+    :return: cv2.imread
+    """
+    if not isinstance(resource, ReconResource):
+        raise ValueError('Parameter resource have to be a Resource')
+
+    resource_path = resource.get_content_path()
+
+    if not os.path.exists(resource_path) or not os.path.isfile(resource_path):
+        raise ValueError('Resource have no content')
+
+    return cv2.imread(resource_path)
+
+
+def save_result(minuend, subthrahend, result_img):
+    """
+    Save the analysis result
+    
+    :param minuend: Minuend ReconResource
+    :param subthrahend: Subthrahend ReconResource
+    :param result_img: cv2 result image
+    :return: filename of result
+    """
+
+    filename = (get_name_without_extentsion(minuend.filename) + '_SUB_' + get_name_without_extentsion(
+        subthrahend.filename)).upper() + '.jpg'
+    path = os.path.join(RESULT_FOLDER, filename)
+    cv2.imwrite(path, result_img)
+
+    return filename
+
+
 def build_thumbnail(resource):
     """
     Cree la vignette de la resource
@@ -31,60 +68,3 @@ def build_thumbnail(resource):
 
     path = os.path.join(THUMBNAIL_FOLDER, resource.filename)
     cv2.imwrite(path, resource_thumbnail)
-
-
-def resource_subtraction(diminuend, subtrahend):
-    """
-    Subtract two resources
-    
-    :param diminuend: Diminuend resource
-    :type diminuend: ReconResource
-    
-    :param subtrahend: Subtrahend resource
-    :type subtrahend: ReconResource
-    
-    :return: Result filename
-    :rtype: str
-    """
-    if not isinstance(diminuend, ReconResource):
-        raise Exception('Parameter diminuend have to be a Resource')
-    if not isinstance(subtrahend, ReconResource):
-        raise Exception('Parameter subtrahend have to be a Resource')
-
-    if diminuend.filename is None:
-        raise Exception('Diminuend resource have no content file')
-    if subtrahend.filename is None:
-        raise Exception('Subtrahend resource have no content file')
-
-    if not os.path.exists(diminuend.get_content_path()) and not os.path.isfile(diminuend.get_content_path()):
-        raise Exception('Diminuend resource have no content file')
-    if not os.path.exists(subtrahend.get_content_path()) and not os.path.isfile(subtrahend.get_content_path()):
-        raise Exception('Subtrahend resource have no content file')
-
-    diminuend_img = cv2.imread(diminuend.get_content_path())
-    subtrahend_img = cv2.imread(subtrahend.get_content_path())
-
-    substractor = cv2.createBackgroundSubtractorMOG2()
-    substractor.apply(diminuend_img)
-    mask = substractor.apply(subtrahend_img)
-
-    filename = get_name_without_extentsion(diminuend.filename) + '_SUB_' + get_name_without_extentsion(
-        subtrahend.filename) + '.jpg'
-    path = os.path.join(RESULT_FOLDER, filename)
-    cv2.imwrite(path, mask)
-
-    return filename
-
-
-def picture_black_percentage(picture_filename):
-    """
-    Get percentage of black color in a picture
-    
-    :param picture_filename: picture filename
-    :type picture_filename: str
-    
-    :return: Percentage of black color
-    :rtype: float
-    """
-
-    pass

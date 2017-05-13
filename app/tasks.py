@@ -1,5 +1,8 @@
+import os
+import numpy as np
+import cv2
 from app import create_celery_app
-from app.core.picture_engine import build_thumbnail, resource_subtraction
+from app.core.picture_engine import build_thumbnail, open_resource_content, save_result
 from app.models import ReconResource, Analysis, AnalysisResult
 from app.extensions import db
 
@@ -24,10 +27,10 @@ def task_build_thumbnail(resource_id):
 
 
 @celery.task
-def run_analysis(analysis_id):
+def new_analysis(analysis_id):
     """
     Run a analysis
-    
+
     :param analysis_id: Analysis unique id
     :type analysis_id: int
     """
@@ -46,36 +49,67 @@ def run_analysis(analysis_id):
     analysis.total = 0
     analysis.current = 0
 
-    # Count total to do
-    for resource in analysis.minuend_recon.resources.all():
-        if analysis.subtrahend_recon.resources.filter_by(number=resource.number).first() is not None:
-            analysis.total += 1
+    tasks = []
+    for minuend in analysis.minuend_recon.resources.all():
+        subthrahend = analysis.subtrahend_recon.resources.filter_by(number=minuend.number).first()
 
-    try:
-        for minuend in analysis.minuend_recon.resources.all():
-            substrahend = analysis.subtrahend_recon.resources.filter_by(number=minuend.number).first()
+        if subthrahend is not None:
+            if minuend.filename is not None and subthrahend.filename is not None:
+                tasks.append({'minuend': minuend, 'subthrahend': subthrahend})
 
-            if substrahend is not None:
-                result_filename = resource_subtraction(minuend, substrahend)
+    analysis.total = len(tasks)
+    if analysis.total > 0:
+        try:
+            # Create vars before loop for less memory consumption
+            diminuend_img = open_resource_content(tasks[0]['minuend'])
+            subtrahend_img = open_resource_content(tasks[0]['subthrahend'])
+            substractor = cv2.createBackgroundSubtractorMOG2()
+            result_img = None
 
+            for i in range(0, len(tasks)):
+
+                minuend = tasks[i]['minuend']
+                subthrahend = tasks[i]['subthrahend']
+                if i > 0:
+                    diminuend_img = open_resource_content(minuend)
+                    subtrahend_img = open_resource_content(subthrahend)
+
+                substractor.apply(diminuend_img)
+                result_img = substractor.apply(subtrahend_img)
+
+                diff = cv2.countNonZero(result_img)
+                total = result_img.shape[0] * result_img.shape[1]
+                result = diff * 100 / total
+
+                filename = save_result(minuend, subthrahend, result_img)
                 result = AnalysisResult(
                     analysis=analysis,
                     minuend_resource=minuend,
-                    subtrahend_resource=substrahend,
-                    filename=result_filename
+                    subtrahend_resource=subthrahend,
+                    filename=filename,
+                    result=result
                 )
                 analysis.current += 1
+                analysis.result += result
 
                 db.session.add(analysis)
                 db.session.add(result)
                 db.session.commit()
 
-        analysis.state = 'complete'
+                # Reset
+                substractor = cv2.createBackgroundSubtractorMOG2()
+            analysis.state = 'complete'
 
-    except Exception as e:
+        except Exception as e:
+            analysis.state = 'error'
+            analysis.message = str(e)
+
+        finally:
+            db.session.add(analysis)
+            db.session.commit()
+    else:
         analysis.state = 'error'
-        analysis.message = str(e)
+        analysis.message = 'No valid resources found'
 
-    finally:
         db.session.add(analysis)
         db.session.commit()
