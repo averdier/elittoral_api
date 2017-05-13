@@ -13,6 +13,7 @@ from app.api.endpoints.Waypoints import ns as waypoint_namespace
 from app.api.endpoints.Recons import ns as recon_namespace
 from app.api.endpoints.Resources import ns as resource_namespace
 from app.api.endpoints.Analysis import ns as analysis_namespace
+from app.api.endpoints.Results import ns as result_namespace
 
 api.add_namespace(info_namespace)
 api.add_namespace(flightplan_namespace)
@@ -20,3 +21,4 @@ api.add_namespace(waypoint_namespace)
 api.add_namespace(recon_namespace)
 api.add_namespace(resource_namespace)
 api.add_namespace(analysis_namespace)
+api.add_namespace(result_namespace)
