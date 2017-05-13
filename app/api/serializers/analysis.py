@@ -39,9 +39,8 @@ analysis_with_recon = api.inherit('Analysis WithRecon', analysis_base, {
     'subtrahend_recon': fields.Nested(recon, required=True, description='Subtrahend recon')
 })
 
-analysis_with_resources = api.inherit('Analysis WithResources', analysis_base, {
-    'minuend_recon': fields.Nested(recon_with_resources, required=True, description='Minuend recon'),
-    'subtrahend_recon': fields.Nested(recon_with_resources, required=True, description='Subtrahend recon')
+analysis_with_result = api.inherit('Analysis WithResults', analysis_base, {
+    'results' : fields.List(fields.Nested(analysis_result_with_resources), description='List of results')
 })
 
 analysis_data_container = api.model('Analysis DataContainer', {

@@ -3,7 +3,7 @@ from config import UPLOAD_FOLDER, RESULT_FOLDER
 from flask import request, send_from_directory
 from flask_restplus import abort
 from flask_restplus import Resource
-from app.api.serializers.analysis import analysis_data_container, analysis_with_recon, analysis_with_resources, analysis_result_with_resources, \
+from app.api.serializers.analysis import analysis_data_container, analysis_with_recon, analysis_with_result, analysis_result_with_resources, \
     analysis_post
 from app.api import api
 from app.extensions import db
@@ -54,7 +54,7 @@ class AnalysisCollection(Resource):
 @ns.route('/<int:id>')
 @api.response(404, 'Analysis not found.')
 class AnalysisItem(Resource):
-    @api.marshal_with(analysis_with_resources)
+    @api.marshal_with(analysis_with_result)
     def get(self, id):
         """
         Get a Analysis
