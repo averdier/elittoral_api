@@ -170,7 +170,8 @@ class FlightBuilder(Resource):
             fp = FlightPlan(
                 name=fp_name,
                 waypoints=flightplan_path,
-                builder_options=builder
+                builder_options=builder,
+                builded = True
             )
 
             fp.update_informations()

@@ -9,7 +9,7 @@ recon_post = api.model('ReconPost', {
 
 recon = api.inherit('Recon', recon_post, {
     'id' : fields.Integer(required=True, description='Recon unique ID'),
-    'resources_count' : fields.Integer(attribute=lambda x: x.resources.count()),
+    'resources_count' : fields.Integer(attribute=lambda x: x.resources.count() if (x is not None) else None),
 })
 
 recon_with_resources = api.inherit('ReconWithResources', recon, {
