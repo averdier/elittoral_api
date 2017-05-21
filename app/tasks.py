@@ -83,7 +83,7 @@ def new_analysis(analysis_id):
                 result = diff * 100 / total
 
                 filename = save_result(minuend, subthrahend, result_img)
-                result = AnalysisResult(
+                a_result = AnalysisResult(
                     analysis=analysis,
                     minuend_resource=minuend,
                     subtrahend_resource=subthrahend,
@@ -94,7 +94,7 @@ def new_analysis(analysis_id):
                 analysis.result += result
 
                 db.session.add(analysis)
-                db.session.add(result)
+                db.session.add(a_result)
                 db.session.commit()
 
                 # Reset
