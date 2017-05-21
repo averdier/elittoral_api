@@ -48,6 +48,7 @@ def new_analysis(analysis_id):
     analysis.state = 'progress'
     analysis.total = 0
     analysis.current = 0
+    analysis.result = 0
 
     tasks = []
     for minuend in analysis.minuend_recon.resources.all():
