@@ -7,6 +7,7 @@ api = Api(blueprint,
           version='2.0',
           description='API for the BTS E-Littoral Project')
 
+from app.api.endpoints.Postman import ns as postman_namespace
 from app.api.endpoints.AppInformations import ns as info_namespace
 from app.api.endpoints.FlightPlans import ns as flightplan_namespace
 from app.api.endpoints.Waypoints import ns as waypoint_namespace
@@ -15,6 +16,7 @@ from app.api.endpoints.Resources import ns as resource_namespace
 from app.api.endpoints.Analysis import ns as analysis_namespace
 from app.api.endpoints.Results import ns as result_namespace
 
+api.add_namespace(postman_namespace)
 api.add_namespace(info_namespace)
 api.add_namespace(flightplan_namespace)
 api.add_namespace(waypoint_namespace)
