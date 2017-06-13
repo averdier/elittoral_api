@@ -79,7 +79,7 @@ def new_analysis(analysis_id):
                 result_img = substractor.apply(subtrahend_img)
 
                 diff = cv2.countNonZero(result_img)
-                total = diminuend_img.size
+                total = result_img.shape[0] * result_img.shape[1]
                 result = diff * 100 / total
 
                 filename = save_result(minuend, subthrahend, result_img)
